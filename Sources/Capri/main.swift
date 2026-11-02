@@ -33,7 +33,12 @@ let args = CommandLine.arguments
 if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     let modes = AssistantMode.allCases
     let mode = args.count > i + 2 ? (modes.first { "\($0)" == args[i + 2] } ?? .idle) : .idle
-    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode) }
+    let expanded = !args.contains("colapsado")
+    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded) }
+    exit(0)
+}
+if let i = args.firstIndex(of: "--gallery"), args.count > i + 1 {
+    MainActor.assumeIsolated { writeGallery(to: args[i + 1]) }
     exit(0)
 }
 
