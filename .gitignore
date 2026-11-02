@@ -1,0 +1,19 @@
+# Swift / SwiftPM
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Arte: borradores y referencias con derechos de terceros
+art/inbox/*
+!art/inbox/.gitkeep
+art/referencias/*
+!art/referencias/.gitkeep
+
+# Secretos
+.env
+*.p8
