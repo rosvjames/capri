@@ -16,7 +16,8 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Estilo decidido: anime (maestra) + chibi (derivada)
 - ✅ Capturas de referencia (A-000); rasgos y paleta confirmados
 - ✅ Hoja de personaje de Capri (A-001, referencia maestra)
-- ⬜ Expresiones (A-002) y hoja chibi (A-003)
+- ✅ Expresiones (A-002)
+- ⬜ Hoja chibi (A-003)
 - ⬜ Tipografía y paleta de interfaz (quitar el cian del prototipo)
 - ⬜ Sprites por estado (espera, escuchando, pensando, respondiendo)
 - ⬜ Integrar los assets en el notch y reemplazar el placeholder
