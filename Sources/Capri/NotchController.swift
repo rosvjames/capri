@@ -35,7 +35,16 @@ final class NotchController {
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
 
-        installHoverMonitors()
+        // CAPRI_ESTADO fija un estado e ignora el ratón, para medir rendimiento sin interferencias.
+        if let fixed = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] {
+            switch fixed {
+            case "abierto": setExpanded(true)
+            case "activo": model.mode = .speaking
+            default: break
+            }
+        } else {
+            installHoverMonitors()
+        }
     }
 
     func setExpanded(_ value: Bool) {
