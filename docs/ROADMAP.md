@@ -25,7 +25,9 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Paleta de interfaz de Capri (sin cian)
 - ⬜ Tipografía de interfaz
 - ⬜ Icono de la barra de menús por código (máscara y ojos)
-- ⬜ Base anime sin rasgos (A-005) para el panel expandido
+- ✅ Panel abierto con el prototipo aprobado v3: fotogramas completos con sus duraciones e interfaz nativa (`NotchPresence.swift`, `art/final/notch-fiel-v3/`)
+- ~~Base anime sin rasgos (A-005)~~: sustituida por los fotogramas completos
+- ⬜ Notch cerrado con el enfoque de fotogramas (hoy usa la cara chibi por capas)
 - Hito: el notch muestra a Capri cambiando de expresión según el estado
 
 ## Fase 2 — Bucle de voz (C-01)
