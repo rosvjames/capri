@@ -11,9 +11,11 @@ Estados: ⬜ pendiente · 🟨 en curso · ✅ hecha
 - ✅ Cerrar decisiones D-1 a D-6 (`docs/CAPACIDADES.md`)
 - ✅ Análisis de otros proyectos de Capri (`docs/REFERENCIAS.md`)
 
-## Fase 1 — Identidad visual 
-Va en paralelo con la Fase 2.
-- ⬜ Hoja de personaje de Capri (referencia maestra)
+## Fase 1 — Identidad visual 🟨
+Rama: `fase-1/identidad-visual`.
+- ✅ Estilo decidido: anime (maestra) + chibi (derivada)
+- 🟨 Capturas de referencia (A-000)
+- ⬜ Hoja de personaje de Capri (A-001, referencia maestra)
 - ⬜ Paleta y tipografía definitivas a partir de la hoja
 - ⬜ Sprites por estado (espera, escuchando, pensando, respondiendo)
 - ⬜ Integrar los assets en el notch y reemplazar el placeholder
