@@ -20,9 +20,10 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Hoja chibi (A-003); se reconoce a 32 px
 - ✅ Arquitectura visual por capas: bases en imagen, ojos/bocas/efectos por código
 - ✅ Base chibi sin rasgos (A-004) + anclajes de ojos y boca
-- ⬜ Ojos y bocas vectoriales en SwiftUI, replicando las 9 expresiones de A-002
-- ⬜ Integrar Capri chibi en el notch y reemplazar el núcleo placeholder
-- ⬜ Paleta de interfaz de Capri (quitar el cian del prototipo) y tipografía
+- ✅ Ojos y bocas vectoriales en SwiftUI, replicando las 9 expresiones de A-002 (`CapriFace.swift`)
+- ✅ Integrar Capri chibi en el notch y reemplazar el núcleo placeholder
+- ✅ Paleta de interfaz de Capri (sin cian)
+- ⬜ Tipografía de interfaz
 - ⬜ Icono de la barra de menús por código (máscara y ojos)
 - ⬜ Base anime sin rasgos (A-005) para el panel expandido
 - Hito: el notch muestra a Capri cambiando de expresión según el estado
