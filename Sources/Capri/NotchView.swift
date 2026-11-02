@@ -23,11 +23,12 @@ struct NotchView: View {
                         .clipShape(NotchShape(topRadius: top, bottomRadius: bottom))
                 }
                 .overlay {
-                    // El borde y el brillo rojos son del estado cerrado; la maqueta abierta no los lleva.
+                    // El borde y el brillo rojos solo marcan el estado cerrado activo: en reposo el notch
+                    // se ve como el de la pantalla, y la maqueta abierta no los lleva.
                     NotchShape(topRadius: top, bottomRadius: bottom)
-                        .stroke(LinearGradient(colors: [Theme.red.opacity(0), Theme.red.opacity(active ? 0.8 : 0.35)],
+                        .stroke(LinearGradient(colors: [Theme.red.opacity(0), Theme.red.opacity(0.8)],
                                                startPoint: .top, endPoint: .bottom), lineWidth: 1)
-                        .opacity(model.expanded ? 0 : 1)
+                        .opacity(!model.expanded && active ? 1 : 0)
                 }
                 .shadow(color: Theme.red.opacity(!model.expanded && active ? 0.35 : 0), radius: 14, y: 4)
                 .frame(width: w, height: h)
@@ -44,7 +45,7 @@ struct NotchView: View {
     private func content(top: CGFloat) -> some View {
         let m = model.metrics
         ZStack(alignment: .top) {
-            // Estado colapsado: Capri a un lado del notch físico, onda al otro, línea inferior respirando.
+            // Estado colapsado activo: Capri a un lado del notch físico, onda al otro.
             // Con `if` y no con opacidad: una vista oculta con opacidad 0 sigue animándose y gastando CPU.
             if !model.expanded {
                 collapsedAccessories(m, top: top)
@@ -71,11 +72,8 @@ struct NotchView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .transition(.opacity)
-            } else {
-                BreathingLine()
-                    .frame(width: m.width * 0.55, height: 1.5)
-                    .transition(.opacity)
             }
+            // En reposo no se dibuja nada: el notch se ve igual que el de la pantalla.
         }
         // Altura fija: si no, el contenido expandido (oculto) estira el ZStack y saca esto de la zona visible.
         .frame(height: m.height)
