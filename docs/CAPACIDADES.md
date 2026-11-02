@@ -18,7 +18,8 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-06 | Hora y fecha | "¿Qué hora es?" | Local, sin LLM |
 | C-07 | Abrir aplicaciones | "Abre Safari", "abre Claude", "abre ChatGPT" | Local (`NSWorkspace`); el LLM solo identifica la intención |
 | C-08 | Abrir sitios | "Abre YouTube" | Local; abre la URL en el navegador por defecto |
-| C-09 | Música | "Pon tal canción" | Control de la app de música vía AppleScript / URL scheme |
+| C-09 | Música (Spotify) | "Pon tal canción", "pausa", "¿qué suena?" | AppleScript sobre Spotify |
+| C-10 | Interrumpir y silenciar | Esc la calla o cancela; modo silencio; se oculta en pantalla completa | Local |
 
 ### Principio de diseño
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.
@@ -30,6 +31,12 @@ Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el
 - C-22 Leer la ventana activa (captura de pantalla) como contexto de código
 - C-23 Recordatorios y temporizadores
 - C-24 Comentarios espontáneos / personalidad proactiva
+- C-25 Presencia en el escritorio: aparecer fuera del notch, moverse e interactuar con la pantalla (D-7)
+- C-26 Narrar en el notch lo que hace Claude Code (hooks): acción actual, avisos de permiso, resumen al terminar
+- C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
+- C-28 Reacciones en espera sin gastar IA (miradas, gestos)
+
+Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.md`.
 
 ## Decisiones
 
