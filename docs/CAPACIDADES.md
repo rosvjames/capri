@@ -1,6 +1,8 @@
 # Capacidades de Capri
 
-Asistente de escritorio para macOS con la estética de Capri (*Cyberpunk: Edgerunners 2*). Vive en el notch y se usa principalmente por voz.
+Asistente de escritorio para macOS con la estética de Capri (*Cyberpunk: Edgerunners 2*), que se usa principalmente por voz.
+
+El notch es su primera superficie y una de las funciones distintivas del proyecto, pero no la única: más adelante Capri también aparecerá en el escritorio e interactuará con la pantalla (C-25).
 
 Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los commits.
 
@@ -29,13 +31,21 @@ Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el
 - C-23 Recordatorios y temporizadores
 - C-24 Comentarios espontáneos / personalidad proactiva
 
-## Decisiones abiertas
+## Decisiones
 
-| # | Pregunta | Opciones | Recomendación |
-|---|---|---|---|
-| D-1 | ¿Qué LLM? | Claude API (de pago, mejor en código) · Ollama local (gratis, más limitado) · ambos | Claude API como principal, con capa abstracta para añadir Ollama |
-| D-2 | ¿Cómo se activa? | Atajo de teclado (push-to-talk) · palabra de activación | Atajo en v1; palabra de activación en v2 (C-20) |
-| D-3 | ¿Qué app de música? | Spotify · Apple Music | — (depende de cuál uses) |
-| D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) · Whisper local | Speech de Apple en v1 |
-| D-5 | ¿Voz de respuesta? | Voces del sistema · TTS local · TTS en la nube | Voz del sistema en v1; evaluar una voz con más carácter después |
-| D-6 | ¿Repositorio público? | Público · privado | Público si va al CV; arte generado con aviso de fan project no comercial |
+### Cerradas (2026-11-01)
+
+| # | Pregunta | Decisión |
+|---|---|---|
+| D-1 | ¿Qué LLM? | Claude API como principal, detrás de un protocolo para poder añadir Ollama (local) después |
+| D-2 | ¿Cómo se activa? | Atajo de teclado global (push-to-talk) en v1; palabra de activación en v2 (C-20). La tecla exacta se elige en la Fase 2 |
+| D-3 | ¿Qué app de música? | Spotify |
+| D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) en v1 |
+| D-5 | ¿Voz de respuesta? | Voz del sistema en v1; voz con más carácter después (ElevenLabs Voice Design o TTS local tipo Kokoro) |
+| D-6 | ¿Repositorio público? | Público, con aviso de fan project no comercial |
+
+### Abiertas
+
+| # | Pregunta | Notas |
+|---|---|---|
+| D-7 | ¿Cuándo y cómo aparece Capri en el escritorio, fuera del notch? | Ver C-25. Se decide cuando el notch y la voz funcionen |

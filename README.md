@@ -1,6 +1,6 @@
 # Capri
 
-Asistente de voz para macOS que vive en el notch, con la estética de Capri de *Cyberpunk: Edgerunners 2*.
+Asistente de voz para macOS con la estética de Capri de *Cyberpunk: Edgerunners 2*. Empieza en el notch y más adelante también aparecerá en el escritorio.
 
 > 🚧 En desarrollo — ver [roadmap](docs/ROADMAP.md).
 
