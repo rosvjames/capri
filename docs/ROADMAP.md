@@ -18,10 +18,14 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Hoja de personaje de Capri (A-001, referencia maestra)
 - ✅ Expresiones (A-002)
 - ✅ Hoja chibi (A-003); se reconoce a 32 px
-- ⬜ Icono propio para la barra de menús (~16 px): solo máscara y ojos
-- ⬜ Tipografía y paleta de interfaz (quitar el cian del prototipo)
-- ⬜ Sprites por estado (espera, escuchando, pensando, respondiendo)
-- ⬜ Integrar los assets en el notch y reemplazar el placeholder
+- ✅ Arquitectura visual por capas: bases en imagen, ojos/bocas/efectos por código
+- ⬜ Base chibi sin rasgos (A-004) + anclajes de ojos y boca
+- ⬜ Ojos y bocas vectoriales en SwiftUI, replicando las 9 expresiones de A-002
+- ⬜ Integrar Capri chibi en el notch y reemplazar el núcleo placeholder
+- ⬜ Paleta de interfaz de Capri (quitar el cian del prototipo) y tipografía
+- ⬜ Icono de la barra de menús por código (máscara y ojos)
+- ⬜ Base anime sin rasgos (A-005) para el panel expandido
+- Hito: el notch muestra a Capri cambiando de expresión según el estado
 
 ## Fase 2 — Bucle de voz (C-01)
 - ⬜ Atajo de teclado global para hablar (push-to-talk)
