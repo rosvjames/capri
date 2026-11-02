@@ -17,7 +17,8 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Capturas de referencia (A-000); rasgos y paleta confirmados
 - ✅ Hoja de personaje de Capri (A-001, referencia maestra)
 - ✅ Expresiones (A-002)
-- ⬜ Hoja chibi (A-003)
+- ✅ Hoja chibi (A-003); se reconoce a 32 px
+- ⬜ Icono propio para la barra de menús (~16 px): solo máscara y ojos
 - ⬜ Tipografía y paleta de interfaz (quitar el cian del prototipo)
 - ⬜ Sprites por estado (espera, escuchando, pensando, respondiendo)
 - ⬜ Integrar los assets en el notch y reemplazar el placeholder
