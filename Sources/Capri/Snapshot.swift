@@ -2,15 +2,21 @@ import AppKit
 import SwiftUI
 
 // Renderizado a PNG sin permisos de grabación de pantalla, para verificar la interfaz:
-//   Capri --snapshot ruta.png [modo] [colapsado]   panel del notch en un modo (expandido por defecto)
+//   Capri --snapshot ruta.png [modo] [colapsado] [t=ms]
+//       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
+//       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
+//   Capri --timing-check                           imprime los cambios de dibujo que programa el reproductor (2 loops)
 
 @MainActor
-func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true) {
-    let model = AssistantModel(metrics: NotchMetrics(width: 190, height: 32))
+func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0) {
+    let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+    let model = AssistantModel(metrics: screen.map(NotchMetrics.of) ?? NotchMetrics(width: 185, height: 32))
+    _ = NotchFrames.shared  // decodificar antes de fijar la hora, para que el instante capturado sea el pedido
     model.expanded = expanded
     model.mode = mode
-    let size = CGSize(width: Layout.expandedW + 2 * Layout.panelPadX, height: Layout.expandedH + Layout.panelPadY)
+    model.expandedAt = Date().addingTimeInterval(-elapsedMs / 1000)
+    let size = model.windowSize
     let view = NotchView(model: model)
         .frame(width: size.width, height: size.height)
         .background(Color(white: 0.18))
@@ -43,4 +49,20 @@ private func writePNG(_ view: some View, to path: String) {
           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
     else { print("snapshot failed"); return }
     try? png.write(to: URL(fileURLWithPath: path))
+}
+
+/// Recorre el calendario real del reproductor (el mismo que usa TimelineView) durante dos loops.
+func printExposureSchedule() {
+    let frames = NotchFrames.shared
+    let origin = Date(timeIntervalSinceReferenceDate: 0)
+    // Reloj simulado que avanza a cada entrada, como si cada actualización ocurriera a su hora.
+    var clock = origin
+    let schedule = ExposureSchedule(origin: origin, frames: frames, now: { clock })
+    let entries = schedule.entries(from: origin, mode: .normal)
+    for _ in 0..<(frames.exposures.count * 2) {
+        guard let date = entries.next() else { break }
+        clock = date
+        let t = date.timeIntervalSince(origin)
+        print(String(format: "%.0f", t * 1000), frames.exposures[frames.index(at: t)].frame)
+    }
 }
