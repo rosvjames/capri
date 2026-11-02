@@ -45,7 +45,7 @@ final class NotchController {
 
     private func hoverRect(expanded: Bool) -> NSRect {
         let m = model.metrics
-        let w = (expanded ? Layout.expandedW : m.width + 76) + (expanded ? 24 : 0)
+        let w = (expanded ? Layout.expandedW : m.width + 2 * Layout.collapsedSide) + (expanded ? 24 : 0)
         let h = expanded ? Layout.expandedH + 10 : m.height + 2
         return NSRect(x: screen.frame.midX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
     }

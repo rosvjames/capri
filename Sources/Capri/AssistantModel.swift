@@ -45,6 +45,8 @@ struct NotchMetrics {
 enum Layout {
     static let expandedW: CGFloat = 500
     static let expandedH: CGFloat = 156
+    /// Espacio a cada lado del notch físico cuando está colapsado y activo (cabeza de Capri / onda).
+    static let collapsedSide: CGFloat = 48
     static let panelPadX: CGFloat = 60
     static let panelPadY: CGFloat = 40
 }

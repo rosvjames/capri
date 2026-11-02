@@ -10,7 +10,7 @@ struct NotchView: View {
         let top: CGFloat = model.expanded ? 18 : 6
         let bottom: CGFloat = model.expanded ? 26 : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
-        let w = (model.expanded ? Layout.expandedW : (active ? m.width + 76 : m.width)) + 2 * top
+        let w = (model.expanded ? Layout.expandedW : (active ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
         let h = model.expanded ? Layout.expandedH : m.height
 
         ZStack(alignment: .top) {
@@ -22,10 +22,10 @@ struct NotchView: View {
                 }
                 .overlay {
                     NotchShape(topRadius: top, bottomRadius: bottom)
-                        .stroke(LinearGradient(colors: [Theme.crimson.opacity(0), Theme.crimson.opacity(active || model.expanded ? 0.8 : 0.35)],
+                        .stroke(LinearGradient(colors: [Theme.red.opacity(0), Theme.red.opacity(active || model.expanded ? 0.8 : 0.35)],
                                                startPoint: .top, endPoint: .bottom), lineWidth: 1)
                 }
-                .shadow(color: Theme.crimson.opacity(model.expanded ? 0.45 : (active ? 0.35 : 0.0)), radius: 14, y: 4)
+                .shadow(color: Theme.red.opacity(model.expanded ? 0.45 : (active ? 0.35 : 0.0)), radius: 14, y: 4)
                 .frame(width: w, height: h)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -39,8 +39,8 @@ struct NotchView: View {
     private func content(top: CGFloat) -> some View {
         let m = model.metrics
         ZStack(alignment: .top) {
-            // Estado colapsado: indicadores a los lados del notch físico + línea inferior respirando.
-            collapsedAccessories(m)
+            // Estado colapsado: Capri a un lado del notch físico, onda al otro, línea inferior respirando.
+            collapsedAccessories(m, top: top)
                 .opacity(model.expanded ? 0 : 1)
 
             expandedContent(m, top: top)
@@ -49,42 +49,44 @@ struct NotchView: View {
         }
     }
 
-    private func collapsedAccessories(_ m: NotchMetrics) -> some View {
+    private func collapsedAccessories(_ m: NotchMetrics, top: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
             HStack {
-                Circle().fill(Theme.crimson).frame(width: 6, height: 6)
-                    .shadow(color: Theme.crimson, radius: 4)
-                    .padding(.leading, 26)
+                LiveCapriFace(mode: model.mode)
+                    .frame(width: m.height + 4, height: m.height + 4)
+                    .padding(.leading, top + 4)
                     .opacity(active ? 1 : 0)
                 Spacer()
                 WaveformView(mode: model.mode, bars: 4)
                     .frame(width: 22, height: 12)
-                    .padding(.trailing, 26)
+                    .padding(.trailing, top + 12)
                     .opacity(active ? 1 : 0)
             }
             .frame(maxHeight: .infinity)
 
             TimelineView(.animation) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate
-                Capsule().fill(Theme.crimson)
+                Capsule().fill(Theme.red)
                     .frame(width: m.width * 0.55, height: 1.5)
-                    .shadow(color: Theme.crimson, radius: 5)
+                    .shadow(color: Theme.red, radius: 5)
                     .opacity(0.35 + 0.35 * (0.5 + 0.5 * sin(t * 1.6)))
             }
             .opacity(active ? 0 : 1)
         }
+        // Altura fija: si no, el contenido expandido (oculto) estira el ZStack y saca esto de la zona visible.
+        .frame(height: m.height)
     }
 
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
-        HStack(spacing: 18) {
-            CoreAvatar(mode: model.mode)
-                .frame(width: 88, height: 88)
+        HStack(spacing: 16) {
+            LiveCapriFace(mode: model.mode)
+                .frame(width: 100, height: 100)
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     GlitchText(text: "CAPRI", intensity: active ? 0.9 : 0.35)
                     Text("//").font(Theme.mono(12)).foregroundStyle(Theme.dim)
-                    Text(model.mode.label).font(Theme.mono(11, weight: .semibold)).foregroundStyle(Theme.crimson)
+                    Text(model.mode.label).font(Theme.mono(11, weight: .semibold)).foregroundStyle(Theme.red)
                 }
                 WaveformView(mode: model.mode)
                     .frame(height: 22)
@@ -95,9 +97,9 @@ struct NotchView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, top + 22)
-        .padding(.top, m.height + 6)
-        .padding(.bottom, 16)
+        .padding(.horizontal, top + 16)
+        .padding(.top, m.height + 4)
+        .padding(.bottom, 14)
         .overlay { Scanlines() }
     }
 }
