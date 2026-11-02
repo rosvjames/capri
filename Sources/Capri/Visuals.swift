@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct WaveformView: View {
@@ -5,7 +6,8 @@ struct WaveformView: View {
     var bars = 30
 
     var body: some View {
-        TimelineView(.animation) { ctx in
+        // 24 fps, como la cara: a la frecuencia de la pantalla (hasta 120 Hz) costaba ~10 % de CPU.
+        TimelineView(.periodic(from: .now, by: 1.0 / 24.0)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
             Canvas { g, size in
                 let gap: CGFloat = 3
@@ -42,5 +44,50 @@ struct Scanlines: View {
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+/// Línea roja que respira bajo el notch cerrado. La anima Core Animation en el servidor de ventanas:
+/// con SwiftUI, cada paso del brillo recalculaba toda la ventana y la app gastaba CPU en reposo.
+struct BreathingLine: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { BreathingLineView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class BreathingLineView: NSView {
+    private let line = CALayer()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.masksToBounds = false
+        line.backgroundColor = NSColor(Theme.red).cgColor
+        line.shadowColor = NSColor(Theme.red).cgColor
+        line.shadowOpacity = 1
+        line.shadowRadius = 5
+        line.shadowOffset = .zero
+        layer?.addSublayer(line)
+
+        // Mismo ritmo que antes: opacidad entre 0,35 y 0,70 con un periodo de ~3,9 s.
+        let breathe = CABasicAnimation(keyPath: "opacity")
+        breathe.fromValue = 0.35
+        breathe.toValue = 0.70
+        breathe.duration = .pi / 1.6
+        breathe.autoreverses = true
+        breathe.repeatCount = .infinity
+        breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        line.opacity = 0.35
+        line.add(breathe, forKey: "breathe")
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) no se usa") }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        line.frame = bounds
+        line.cornerRadius = bounds.height / 2
+        CATransaction.commit()
     }
 }

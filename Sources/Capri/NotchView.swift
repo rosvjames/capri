@@ -45,8 +45,11 @@ struct NotchView: View {
         let m = model.metrics
         ZStack(alignment: .top) {
             // Estado colapsado: Capri a un lado del notch físico, onda al otro, línea inferior respirando.
-            collapsedAccessories(m, top: top)
-                .opacity(model.expanded ? 0 : 1)
+            // Con `if` y no con opacidad: una vista oculta con opacidad 0 sigue animándose y gastando CPU.
+            if !model.expanded {
+                collapsedAccessories(m, top: top)
+                    .transition(.opacity)
+            }
 
             expandedContent(m, top: top)
                 .opacity(model.expanded ? 1 : 0)
@@ -56,27 +59,23 @@ struct NotchView: View {
 
     private func collapsedAccessories(_ m: NotchMetrics, top: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
-            HStack {
-                LiveCapriFace(mode: model.mode)
-                    .frame(width: m.height + 4, height: m.height + 4)
-                    .padding(.leading, top + 4)
-                    .opacity(active ? 1 : 0)
-                Spacer()
-                WaveformView(mode: model.mode, bars: 4)
-                    .frame(width: 22, height: 12)
-                    .padding(.trailing, top + 12)
-                    .opacity(active ? 1 : 0)
-            }
-            .frame(maxHeight: .infinity)
-
-            TimelineView(.animation) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                Capsule().fill(Theme.red)
+            if active {
+                HStack {
+                    LiveCapriFace(mode: model.mode)
+                        .frame(width: m.height + 4, height: m.height + 4)
+                        .padding(.leading, top + 4)
+                    Spacer()
+                    WaveformView(mode: model.mode, bars: 4)
+                        .frame(width: 22, height: 12)
+                        .padding(.trailing, top + 12)
+                }
+                .frame(maxHeight: .infinity)
+                .transition(.opacity)
+            } else {
+                BreathingLine()
                     .frame(width: m.width * 0.55, height: 1.5)
-                    .shadow(color: Theme.red, radius: 5)
-                    .opacity(0.35 + 0.35 * (0.5 + 0.5 * sin(t * 1.6)))
+                    .transition(.opacity)
             }
-            .opacity(active ? 0 : 1)
         }
         // Altura fija: si no, el contenido expandido (oculto) estira el ZStack y saca esto de la zona visible.
         .frame(height: m.height)
