@@ -7,7 +7,7 @@ Estados: ⬜ pendiente · 🟨 en curso · ✅ hecha
 - ✅ Paquete Swift que compila sin Xcode (`swift build`)
 - ✅ Prototipo visual del notch con estados simulados (C-02, provisional)
 - ✅ Documentación: capacidades, roadmap, estética, convenciones
-- ⬜ Repositorio en GitHub y primer push
+- ✅ Repositorio en GitHub y primer push ([rosvjames/capri](https://github.com/rosvjames/capri))
 - ⬜ Cerrar decisiones abiertas D-1 a D-6 (`docs/CAPACIDADES.md`)
 
 ## Fase 1 — Identidad visual 
