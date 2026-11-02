@@ -7,6 +7,8 @@ enum Theme {
     static let green = Color(hex: 0x2BF56C)
     static let blue = Color(hex: 0x1F5FD6)
     static let violet = Color(hex: 0x7A3CF0)
+    /// Negro del panel del notch, medido en la maqueta aprobada v3 (igual al fondo de los fotogramas).
+    static let panel = Color(hex: 0x020106)
     static let dim = Color.white.opacity(0.55)
 
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {

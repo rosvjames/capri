@@ -1,0 +1,136 @@
+{
+  "source": "art/inbox/notch-fiel-prueba-v3/timing-final.json",
+  "sequenceDurationMs": 4000,
+  "sequence": [
+    {
+      "frame": "00-reference",
+      "durationMs": 640
+    },
+    {
+      "frame": "01-nota-algo",
+      "durationMs": 80
+    },
+    {
+      "frame": "07-inclina-mitad",
+      "durationMs": 80
+    },
+    {
+      "frame": "02-inclina",
+      "durationMs": 240
+    },
+    {
+      "frame": "07-inclina-mitad",
+      "durationMs": 80
+    },
+    {
+      "frame": "01-nota-algo",
+      "durationMs": 80
+    },
+    {
+      "frame": "00-reference",
+      "durationMs": 400
+    },
+    {
+      "frame": "10-parpadeo-inicio",
+      "durationMs": 40
+    },
+    {
+      "frame": "03-medio-parpadeo",
+      "durationMs": 40
+    },
+    {
+      "frame": "04-parpadeo-cerrado",
+      "durationMs": 80
+    },
+    {
+      "frame": "03-medio-parpadeo",
+      "durationMs": 40
+    },
+    {
+      "frame": "10-parpadeo-inicio",
+      "durationMs": 40
+    },
+    {
+      "frame": "00-reference",
+      "durationMs": 400
+    },
+    {
+      "frame": "11-acerca-arranque",
+      "durationMs": 40
+    },
+    {
+      "frame": "12-acerca-temprano",
+      "durationMs": 40
+    },
+    {
+      "frame": "08-acerca-inicio",
+      "durationMs": 40
+    },
+    {
+      "frame": "13-acerca-acelera",
+      "durationMs": 40
+    },
+    {
+      "frame": "05-se-acerca-intermedio",
+      "durationMs": 40
+    },
+    {
+      "frame": "14-acerca-avanza",
+      "durationMs": 40
+    },
+    {
+      "frame": "09-acerca-mitad",
+      "durationMs": 40
+    },
+    {
+      "frame": "16-acerca-llega",
+      "durationMs": 40
+    },
+    {
+      "frame": "06-se-acerca",
+      "durationMs": 400
+    },
+    {
+      "frame": "16-acerca-llega",
+      "durationMs": 60
+    },
+    {
+      "frame": "09-acerca-mitad",
+      "durationMs": 60
+    },
+    {
+      "frame": "14-acerca-avanza",
+      "durationMs": 60
+    },
+    {
+      "frame": "05-se-acerca-intermedio",
+      "durationMs": 60
+    },
+    {
+      "frame": "13-acerca-acelera",
+      "durationMs": 60
+    },
+    {
+      "frame": "08-acerca-inicio",
+      "durationMs": 60
+    },
+    {
+      "frame": "12-acerca-temprano",
+      "durationMs": 60
+    },
+    {
+      "frame": "11-acerca-arranque",
+      "durationMs": 60
+    },
+    {
+      "frame": "00-reference",
+      "durationMs": 560
+    }
+  ],
+  "omittedDrawings": [
+    {
+      "frame": "15-acerca-frena",
+      "reason": "La medición del disco blanco superaba levemente al fotograma final; se conserva el dibujo original pero no se reproduce para evitar un salto de escala."
+    }
+  ]
+}
