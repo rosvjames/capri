@@ -37,4 +37,4 @@ Reglas:
 
 ## Etiquetas
 
-Al cerrar cada fase: `git tag v0.<fase>.0`, por ejemplo `v0.2.0` al terminar el bucle de voz.
+Al cerrar cada fase: `git tag v0.<fase>.0`, por ejemplo `v0.2.0` al terminar el bucle de voz. Las fases intermedias suben el último número: la 2b es `v0.2.1`.
