@@ -1,7 +1,8 @@
 import AppKit
 import os
 
-/// Habla con Spotify por AppleScript: lo que el aviso no trae y, más adelante, la carátula y los controles (C-29).
+/// Habla con Spotify por AppleScript: lo que el aviso no trae (lo que ya sonaba, la carátula) y, más adelante,
+/// los controles (C-29).
 ///
 /// Necesita el permiso de Automatización (`SpotifyAutomation`), que se pide la primera vez que hace falta.
 /// Los scripts comprueban dentro que Spotify siga abierto: un `tell` a una app cerrada la abriría.
@@ -37,21 +38,33 @@ final class SpotifyRemote {
         }
     }
 
-    /// Muestra el aviso del permiso si aún no se respondió; no hace nada si ya se concedió o se denegó.
-    func requestPermission() {
-        guard permission != .granted, permission != .denied else { return }
-        run(nil, ask: true) { _ in }
+    /// URL de la carátula de la canción que suena, solo si sigue siendo `trackID`. Es la primera vez que hace
+    /// falta el permiso, así que muestra su aviso si aún no se respondió. `done` llega en el hilo principal.
+    func artworkURL(for trackID: String, _ done: @escaping (URL?) -> Void) {
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    if player state is stopped then return ""
+                    return (id of current track) & (character id 31) & (artwork url of current track)
+                end tell
+            end if
+            return ""
+            """, ask: true) { text in
+            let f = text?.components(separatedBy: "\u{1F}") ?? []
+            guard f.count == 2, f[0] == trackID, let url = URL(string: f[1]), url.scheme == "https" else { return done(nil) }
+            done(url)
+        }
     }
 
-    /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script, si hay.
-    private func run(_ source: String?, ask: Bool, _ done: @escaping (String?) -> Void) {
+    /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.
+    private func run(_ source: String, ask: Bool, _ done: @escaping (String?) -> Void) {
         guard Self.isRunning, !(ask && asking) else { return done(nil) }
         if ask { asking = true }
         let known = permission
         queue.async { [self] in
             var state = known == .granted ? .granted : SpotifyAutomation.state(ask: ask)
             var result: String?
-            if state == .granted, let source {
+            if state == .granted {
                 var error: NSDictionary?
                 result = NSAppleScript(source: source)?.executeAndReturnError(&error).stringValue
                 if let error {

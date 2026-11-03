@@ -65,6 +65,8 @@ final class AssistantModel: ObservableObject {
     @Published var openedForSpeech = false
     /// Lo que suena en Spotify, o nil si no suena ni está en pausa (C-29).
     @Published var nowPlaying: NowPlaying?
+    /// Carátula de `nowPlaying`, ya reducida; nil mientras llega o si no se pudo conseguir.
+    @Published var artwork: NSImage?
     /// Nivel del micrófono mientras escucha (0…1).
     @Published var audioLevel: CGFloat = 0
     /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
