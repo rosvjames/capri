@@ -35,7 +35,7 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     let mode = args.count > i + 2 ? (modes.first { "\($0)" == args[i + 2] } ?? .idle) : .idle
     let expanded = !args.contains("colapsado")
     let elapsed = args.first { $0.hasPrefix("t=") }.flatMap { Double($0.dropFirst(2)) } ?? 0
-    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed) }
+    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos")) }
     exit(0)
 }
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
