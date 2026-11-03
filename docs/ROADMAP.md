@@ -40,7 +40,7 @@ Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México
 3. ✅ **Atajo ⌘ derecho** (`PushToTalk.swift`): mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Un toque corto no hace nada; si se pulsa otra tecla o modificador mientras se mantiene, se cancela. Los monitores se instalan al conceder accesibilidad. Por ahora solo cambia el estado del notch a "escuchando".
 4. ✅ **Escuchar** (`SpeechListener.swift`): micrófono + reconocimiento `es-MX` en el propio Mac (sin enviar audio fuera). La frase aparece en vivo en el panel (dos líneas, mostrando el final) y la onda del notch cerrado sigue el nivel real del micrófono. El botón Hablar empieza y termina la escucha. Se añaden los signos de apertura ¿ ¡.
 5. ✅ **Responder en voz** (`Speaker.swift`): Paulina (es-MX), elegida escuchando las voces; se usa automáticamente su mejor calidad instalada; hoy, Paulina mejorada (Enhanced), descargada en Ajustes del Sistema → Accesibilidad → Contenido leído. En esta fase, eco: "Entendí: …" o "No te escuché.". Hablarle mientras responde la calla.
-6. ⬜ **Estados del notch conectados al flujo real**: reposo → escuchando → respondiendo → reposo. Al hablar con el notch cerrado, el panel se abre para mostrar la transcripción y la respuesta, y se cierra solo al terminar.
+6. ✅ **Estados del notch conectados al flujo real**: reposo → escuchando → procesando → respondiendo → reposo, con el notch cerrado. Siguiendo "voz primero" (`docs/CAPACIDADES.md`), el panel no se abre solo en esta fase: la respuesta es un eco y no hay nada que leer. La franja de texto pasa a la Fase 3.
 7. ⬜ **C-10**: Esc la calla o cancela; ocultarse en pantalla completa; modo silencio.
 8. ⬜ **Fotogramas para escuchar y hablar** (panel y notch cerrado), sustituyendo la cara chibi por capas. Va en paralelo con los pasos 1–7.
 - Hito: mantienes ⌘ derecho, dices una frase, sueltas, y Capri la muestra y responde en voz "Entendí: …". En reposo sigue a 0 % de CPU.
@@ -56,7 +56,7 @@ Justo después de la voz: da vida al notch sin depender de la IA.
 ## Fase 3 — Cerebro (C-03, C-04, C-05)
 - ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor)
 - ⬜ Personalidad de Capri (prompt de sistema)
-- ⬜ Respuestas con bloques de código copiables en el panel
+- ⬜ Franja inferior del panel para lo que hay que leer o copiar (comandos, código, enlaces): se abre al terminar de hablar, con botón de copiar, y se cierra sola. Las respuestas solo habladas no abren el panel ("voz primero")
 - ⬜ Contexto de código: portapapeles y archivo arrastrado al notch
 - Hito: preguntas de terminal y de errores respondidas por voz
 
