@@ -46,13 +46,16 @@ Rama: `fase-2/voz`, fusionada en `main`. Decisiones: ⌘ derecho mantenido (D-2)
 9. ✅ **Voz local provisional** (`LocalQwen.swift`, `Resources/qwen-speaker.py`): Qwen3-TTS en el propio Mac clona una referencia de voz que no está en el repo (`capri-qwen-ref2.wav` y su transcripción `.txt`); sin ella, `CAPRI_TTS=paulina`. El modelo se precarga al empezar a escuchar: una respuesta corta suena a ~1,7 s en vez de ~3,7 s. El audio se limpia con RNNoise y el motor de audio se apaga 3 s después de hablar (0 % en reposo). `CAPRI_DECIR="texto"` la hace hablar sin micrófono. La voz definitiva sigue pendiente.
 - ✅ Hito: mantienes ⌘ derecho, dices una frase, sueltas, y el notch se despliega con Capri respondiéndote en voz y moviendo la boca. En reposo sigue a 0 % de CPU.
 
-## Fase 2b — Música en el notch (C-29)
-Justo después de la voz: da vida al notch sin depender de la IA.
-- ⬜ Leer la canción actual de Spotify por sus avisos de cambio (sin sondeo)
-- ⬜ Notch cerrado: carátula y barras mientras suena música
-- ⬜ Panel: canción, artista y controles (anterior, pausa, siguiente)
-- ⬜ Volver a Capri cuando no hay música o tras el aviso de cambio de canción
-- Hito: al cambiar de canción el notch la muestra, y en reposo sigue a 0 % de CPU
+## Fase 2b — Música en el notch (C-29) 🟨
+Rama: `fase-2b/musica`. Solo Spotify. Decisiones: notch cerrado con carátula y barras (no el ojo de Capri), barras con animación ligera solo mientras suena, panel sin barra de progreso ni volumen.
+
+1. ⬜ **Leer Spotify** (`MusicWatcher.swift`): escuchar el aviso `com.spotify.client.PlaybackStateChanged` (canción, artista, álbum, estado, ID), que llega en cada cambio, sin consultar en bucle. Al arrancar, si Spotify ya está abierto, leer el estado una vez; nunca abrirlo por preguntar.
+2. ⬜ **Permiso de Automatización** sobre Spotify (`NSAppleEventsUsageDescription`), dentro del flujo de `Permissions.swift`: se pide la primera vez que hace falta (carátula o controles), no al arrancar.
+3. ⬜ **Carátula**: al cambiar de canción, pedir `artwork url` por AppleScript, descargarla una vez y guardarla por ID de canción.
+4. ⬜ **Notch cerrado**: carátula a la izquierda y barras a la derecha mientras suena. Las barras se animan a pocos cuadros por segundo y se detienen en pausa. Mientras escucha o habla, la chibi de Capri tiene prioridad.
+5. ⬜ **Panel**: en la columna izquierda, sin tocar el recorte de Capri, carátula, canción, artista y controles (anterior, pausa, siguiente) por AppleScript.
+6. ⬜ **Convivencia**: al cambiar de canción el panel la muestra unos segundos y vuelve a Capri. En pausa o sin Spotify, el notch vuelve a su estado normal.
+- Hito: al cambiar de canción el notch la muestra; los controles funcionan; sin música sigue a 0 % de CPU y con música y el notch cerrado no pasa de ~1 %.
 
 ## Fase 3 — Cerebro (C-03, C-04, C-05)
 - ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor)
