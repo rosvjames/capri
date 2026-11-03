@@ -30,8 +30,8 @@ Rama: `fase-1/identidad-visual`, fusionada en `main`.
 - ➡️ Notch cerrado con fotogramas: pasa a la Fase 2, donde existen sus estados
 - ✅ Hito: el notch muestra a Capri (loop aprobado al abrirlo; cara chibi según el estado al estar cerrado y activo), con 0 % de CPU en reposo
 
-## Fase 2 — Bucle de voz (C-01) ✅
-Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México (D-8), voz del sistema (D-5).
+## Fase 2 — Bucle de voz (C-01) ✅ (`v0.2.0`)
+Rama: `fase-2/voz`, fusionada en `main`. Decisiones: ⌘ derecho mantenido (D-2), español de México (D-8), voz del sistema (D-5).
 
 1. ✅ **App empaquetada** (`Capri.app`, script en `tools/`): macOS solo concede micrófono, reconocimiento de voz y accesibilidad a una app con `Info.plist` y firma. Lanzada como binario suelto, los permisos se atribuirían a la terminal.
    - ✅ `tools/empaquetar.sh [--abrir]` genera y firma `build/Capri.app` (`Info.plist` en `app/`).
