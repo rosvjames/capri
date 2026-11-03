@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
+    let music = MusicWatcher()
     private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -16,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.notch = notch
         installStatusItem()
         installPushToTalk(notch)
+        music.onChange = { notch.model.nowPlaying = $0 }
 
         // Modo demostración: CAPRI_DEMO=1 abre el notch y cicla los estados.
         if ProcessInfo.processInfo.environment["CAPRI_DEMO"] == "1" {
