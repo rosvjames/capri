@@ -2,15 +2,17 @@ import AppKit
 import SwiftUI
 
 // Renderizado a PNG sin permisos de grabación de pantalla, para verificar la interfaz:
-//   Capri --snapshot ruta.png [modo] [colapsado] [sinpermisos] [t=ms]
+//   Capri --snapshot ruta.png [modo] [colapsado] [sinpermisos] [musica] [t=ms]
 //       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
-//       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto
+//       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto;
+//       musica simula una canción sonando con una carátula sintética (no usa la de Spotify)
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
 //   Capri --icon ruta.png                          icono de la barra de menús a 18, 36 y 144 px, en barra clara y oscura
 //   Capri --timing-check                           imprime los cambios de dibujo que programa el reproductor (2 loops)
 
 @MainActor
-func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0, withoutPermissions: Bool = false) {
+func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0, withoutPermissions: Bool = false,
+                   music: Bool = false) {
     let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     let model = AssistantModel(metrics: screen.map(NotchMetrics.of) ?? NotchMetrics(width: 185, height: 32))
     _ = NotchFrames.shared  // decodificar antes de fijar la hora, para que el instante capturado sea el pedido
@@ -20,11 +22,26 @@ func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, 
         ($0, withoutPermissions ? PermissionState.notDetermined : .granted)
     }))
     model.expandedAt = Date().addingTimeInterval(-elapsedMs / 1000)
+    if music {
+        model.nowPlaying = NowPlaying(trackID: "spotify:track:prueba", title: "Canción de prueba", artist: "Artista de prueba",
+                                      album: "Álbum", isPlaying: true)
+        model.artwork = syntheticArtwork()
+    }
     let size = model.windowSize
     let view = NotchView(model: model)
         .frame(width: size.width, height: size.height)
         .background(Color(white: 0.18))
+        .environment(\.snapshotRendering, true)
     writePNG(view, to: path)
+}
+
+/// Carátula de prueba: degradado con la paleta de Capri, del tamaño que guarda `ArtworkCache`.
+private func syntheticArtwork() -> NSImage {
+    let side = CGFloat(ArtworkCache.maxPixels)
+    return NSImage(size: NSSize(width: side, height: side), flipped: false) { r in
+        NSGradient(colors: [NSColor(Theme.violet), NSColor(Theme.red), NSColor(Theme.green)])?.draw(in: r, angle: 45)
+        return true
+    }
 }
 
 @MainActor

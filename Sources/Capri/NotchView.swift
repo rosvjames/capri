@@ -4,13 +4,16 @@ struct NotchView: View {
     @ObservedObject var model: AssistantModel
 
     private var active: Bool { model.mode != .idle }
+    /// Suena Spotify y Capri está en reposo: carátula y barras a los lados del notch cerrado (C-29).
+    /// Si Capri escucha o habla, tiene prioridad; en pausa el notch vuelve a verse como el de la pantalla.
+    private var showsMusic: Bool { !active && model.nowPlaying?.isPlaying == true }
 
     var body: some View {
         let m = model.metrics, g = model.geometry
         let top: CGFloat = model.expanded ? g.topRadius : 6
         let bottom: CGFloat = model.expanded ? g.bottomRadius : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
-        let w = (model.expanded ? g.bodyWidth : (active ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
+        let w = (model.expanded ? g.bodyWidth : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
         let h = model.expanded ? g.height : m.height
         // Abierto, el panel sigue la maqueta v3 (no está centrado en la cámara); cerrado, se centra en ella.
         let dx = model.expanded ? g.offsetX : 0
@@ -37,6 +40,7 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.45, dampingFraction: 0.78), value: model.expanded)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.mode)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showsMusic)
         .contentShape(Rectangle())
         .onTapGesture { if model.expanded { model.mode = model.mode.next } }
     }
@@ -69,6 +73,19 @@ struct NotchView: View {
                     WaveformView(mode: model.mode, bars: 4, level: model.mode == .listening ? model.audioLevel : nil)
                         .frame(width: 22, height: 12)
                         .padding(.trailing, top + 12)
+                }
+                .frame(maxHeight: .infinity)
+                .transition(.opacity)
+            } else if showsMusic {
+                // Sin borde ni brillo rojos: esos marcan a Capri activa, la música solo acompaña.
+                HStack {
+                    ArtworkThumb(image: model.artwork)
+                        .frame(width: m.height - 10, height: m.height - 10)
+                        .padding(.leading, top + 12)
+                    Spacer()
+                    MusicBars()
+                        .frame(width: 18, height: 12)
+                        .padding(.trailing, top + 14)
                 }
                 .frame(maxHeight: .infinity)
                 .transition(.opacity)
