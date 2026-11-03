@@ -6,6 +6,7 @@ import SwiftUI
 //       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
 //       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
+//   Capri --icon ruta.png                          icono de la barra de menús a 18, 36 y 144 px, en barra clara y oscura
 //   Capri --timing-check                           imprime los cambios de dibujo que programa el reproductor (2 loops)
 
 @MainActor
@@ -65,4 +66,36 @@ func printExposureSchedule() {
         let t = date.timeIntervalSince(origin)
         print(String(format: "%.0f", t * 1000), frames.exposures[frames.index(at: t)].frame)
     }
+}
+
+/// Vista previa del icono como lo pinta macOS: negro en barra clara y blanco en barra oscura.
+func writeIconPreview(to path: String) {
+    let sizes: [CGFloat] = [18, 36, 144]
+    let pad: CGFloat = 12
+    let width = sizes.reduce(pad) { $0 + $1 + pad }
+    let height = (sizes.max() ?? 0) + 2 * pad
+    let canvas = NSImage(size: NSSize(width: width, height: height * 2), flipped: false) { _ in
+        for (row, (bar, ink)) in [(NSColor(white: 0.93, alpha: 1), NSColor.black), (NSColor(white: 0.16, alpha: 1), NSColor.white)].enumerated() {
+            let y = CGFloat(1 - row) * height
+            bar.setFill()
+            NSRect(x: 0, y: y, width: width, height: height).fill()
+            var x = pad
+            for s in sizes {
+                let icon = MenuBarIcon.make(size: s)
+                let tinted = NSImage(size: icon.size, flipped: false) { r in
+                    icon.draw(in: r)
+                    ink.set()
+                    r.fill(using: .sourceAtop)
+                    return true
+                }
+                tinted.draw(in: NSRect(x: x, y: y + (height - s) / 2, width: s, height: s))
+                x += s + pad
+            }
+        }
+        return true
+    }
+    guard let tiff = canvas.tiffRepresentation,
+          let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+    else { print("icon preview failed"); return }
+    try? png.write(to: URL(fileURLWithPath: path))
 }
