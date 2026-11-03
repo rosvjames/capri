@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import os
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var notch: NotchController?
@@ -59,6 +60,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pushToTalk.onCancel = {
             listener.cancel()
             model.transcript = ""
+            model.mode = .idle
+        }
+        // Esc la calla o cancela la escucha (C-10). En reposo no hace nada.
+        pushToTalk.onEscape = {
+            guard model.mode != .idle else { return }
+            Logger(subsystem: "com.rosvjames.capri", category: "atajo").notice("Esc: se cancela \(String(describing: model.mode), privacy: .public)")
+            listener.cancel()
+            speaker.stop()
             model.mode = .idle
         }
         model.toggleTalk = { listener.isListening ? end() : begin() }

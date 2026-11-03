@@ -13,6 +13,8 @@ final class PushToTalk {
     var onStart: () -> Void = {}
     var onEnd: () -> Void = {}
     var onCancel: () -> Void = {}
+    /// Esc pulsado en cualquier app (C-10). macOS lo entrega también a la app de delante: no se puede capturar.
+    var onEscape: () -> Void = {}
 
     /// Tiempo que hay que mantener la tecla antes de empezar a escuchar.
     var holdDelay: TimeInterval = 0.25
@@ -24,6 +26,7 @@ final class PushToTalk {
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "atajo")
 
     private static let rightCommandKeyCode: UInt16 = 54
+    private static let escapeKeyCode: UInt16 = 53
     /// Bit del ⌘ derecho en los modificadores dependientes del dispositivo (NX_DEVICERCMDKEYMASK).
     private static let rightCommandMask: UInt = 0x10
 
@@ -49,7 +52,9 @@ final class PushToTalk {
     private func handle(_ event: NSEvent) {
         switch event.type {
         case .flagsChanged: handleFlags(event)
-        case .keyDown: interrupt("tecla \(event.keyCode)")
+        case .keyDown:
+            if event.keyCode == Self.escapeKeyCode { onEscape() }
+            interrupt("tecla \(event.keyCode)")
         default: break
         }
     }
