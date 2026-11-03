@@ -6,27 +6,33 @@ struct NotchView: View {
     private var active: Bool { model.mode != .idle }
 
     var body: some View {
-        let m = model.metrics
-        let top: CGFloat = model.expanded ? 18 : 6
-        let bottom: CGFloat = model.expanded ? 26 : 12
+        let m = model.metrics, g = model.geometry
+        let top: CGFloat = model.expanded ? g.topRadius : 6
+        let bottom: CGFloat = model.expanded ? g.bottomRadius : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
-        let w = (model.expanded ? Layout.expandedW : (active ? m.width + 76 : m.width)) + 2 * top
-        let h = model.expanded ? Layout.expandedH : m.height
+        let w = (model.expanded ? g.bodyWidth : (active ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
+        let h = model.expanded ? g.height : m.height
+        // Abierto, el panel sigue la maqueta v3 (no está centrado en la cámara); cerrado, se centra en ella.
+        let dx = model.expanded ? g.offsetX : 0
 
         ZStack(alignment: .top) {
             NotchShape(topRadius: top, bottomRadius: bottom)
-                .fill(.black)
+                .fill(Theme.panel)
                 .overlay(alignment: .top) {
                     content(top: top)
                         .clipShape(NotchShape(topRadius: top, bottomRadius: bottom))
                 }
                 .overlay {
+                    // El borde y el brillo rojos solo marcan el estado cerrado activo: en reposo el notch
+                    // se ve como el de la pantalla, y la maqueta abierta no los lleva.
                     NotchShape(topRadius: top, bottomRadius: bottom)
-                        .stroke(LinearGradient(colors: [Theme.crimson.opacity(0), Theme.crimson.opacity(active || model.expanded ? 0.8 : 0.35)],
+                        .stroke(LinearGradient(colors: [Theme.red.opacity(0), Theme.red.opacity(0.8)],
                                                startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                        .opacity(!model.expanded && active ? 1 : 0)
                 }
-                .shadow(color: Theme.crimson.opacity(model.expanded ? 0.45 : (active ? 0.35 : 0.0)), radius: 14, y: 4)
+                .shadow(color: Theme.red.opacity(!model.expanded && active ? 0.35 : 0), radius: 14, y: 4)
                 .frame(width: w, height: h)
+                .offset(x: dx)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.45, dampingFraction: 0.78), value: model.expanded)
@@ -39,9 +45,12 @@ struct NotchView: View {
     private func content(top: CGFloat) -> some View {
         let m = model.metrics
         ZStack(alignment: .top) {
-            // Estado colapsado: indicadores a los lados del notch físico + línea inferior respirando.
-            collapsedAccessories(m)
-                .opacity(model.expanded ? 0 : 1)
+            // Estado colapsado activo: Capri a un lado del notch físico, onda al otro.
+            // Con `if` y no con opacidad: una vista oculta con opacidad 0 sigue animándose y gastando CPU.
+            if !model.expanded {
+                collapsedAccessories(m, top: top)
+                    .transition(.opacity)
+            }
 
             expandedContent(m, top: top)
                 .opacity(model.expanded ? 1 : 0)
@@ -49,55 +58,34 @@ struct NotchView: View {
         }
     }
 
-    private func collapsedAccessories(_ m: NotchMetrics) -> some View {
+    private func collapsedAccessories(_ m: NotchMetrics, top: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
-            HStack {
-                Circle().fill(Theme.crimson).frame(width: 6, height: 6)
-                    .shadow(color: Theme.crimson, radius: 4)
-                    .padding(.leading, 26)
-                    .opacity(active ? 1 : 0)
-                Spacer()
-                WaveformView(mode: model.mode, bars: 4)
-                    .frame(width: 22, height: 12)
-                    .padding(.trailing, 26)
-                    .opacity(active ? 1 : 0)
+            if active {
+                HStack {
+                    LiveCapriFace(mode: model.mode)
+                        .frame(width: m.height + 4, height: m.height + 4)
+                        .padding(.leading, top + 4)
+                    Spacer()
+                    WaveformView(mode: model.mode, bars: 4)
+                        .frame(width: 22, height: 12)
+                        .padding(.trailing, top + 12)
+                }
+                .frame(maxHeight: .infinity)
+                .transition(.opacity)
             }
-            .frame(maxHeight: .infinity)
-
-            TimelineView(.animation) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                Capsule().fill(Theme.crimson)
-                    .frame(width: m.width * 0.55, height: 1.5)
-                    .shadow(color: Theme.crimson, radius: 5)
-                    .opacity(0.35 + 0.35 * (0.5 + 0.5 * sin(t * 1.6)))
-            }
-            .opacity(active ? 0 : 1)
+            // En reposo no se dibuja nada: el notch se ve igual que el de la pantalla.
         }
+        // Altura fija: si no, el contenido expandido (oculto) estira el ZStack y saca esto de la zona visible.
+        .frame(height: m.height)
     }
 
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
-        HStack(spacing: 18) {
-            CoreAvatar(mode: model.mode)
-                .frame(width: 88, height: 88)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    GlitchText(text: "CAPRI", intensity: active ? 0.9 : 0.35)
-                    Text("//").font(Theme.mono(12)).foregroundStyle(Theme.dim)
-                    Text(model.mode.label).font(Theme.mono(11, weight: .semibold)).foregroundStyle(Theme.crimson)
-                }
-                WaveformView(mode: model.mode)
-                    .frame(height: 22)
-                Text(model.mode.sampleLine)
-                    .font(Theme.mono(12))
-                    .foregroundStyle(.white.opacity(0.88))
-                    .lineLimit(2)
+        Group {
+            if model.expanded {
+                ExpandedPresenceView(geometry: model.geometry, origin: model.expandedAt)
+                    .padding(.leading, top)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, top + 22)
-        .padding(.top, m.height + 6)
-        .padding(.bottom, 16)
-        .overlay { Scanlines() }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

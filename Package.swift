@@ -5,6 +5,10 @@ let package = Package(
     name: "Capri",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "Capri", path: "Sources/Capri")
+        .executableTarget(
+            name: "Capri",
+            path: "Sources/Capri",
+            resources: [.process("Resources")]
+        )
     ]
 )

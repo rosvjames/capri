@@ -1,0 +1,60 @@
+{
+  "source": "art/inbox/notch-fiel-prueba-v3/frames/00-reference.png",
+  "units": "píxeles de la maqueta de 1024x352; y=0 es el borde superior de la pantalla",
+  "canvas": [
+    1024,
+    352
+  ],
+  "notch": {
+    "x": 322,
+    "y": 0,
+    "w": 332,
+    "h": 57
+  },
+  "panel": {
+    "x": 116,
+    "y": 0,
+    "w": 796,
+    "h": 242,
+    "topFlareRadius": 12,
+    "bottomRadius": 62
+  },
+  "characterCrop": {
+    "x": 280,
+    "y": 2,
+    "w": 644,
+    "h": 244
+  },
+  "panelBlack": "020106",
+  "ui": {
+    "title": {
+      "x": 148,
+      "y": 62,
+      "capHeight": 15,
+      "text": "CAPRI",
+      "color": "A1A2A9"
+    },
+    "dot": {
+      "x": 221,
+      "y": 61,
+      "size": 15,
+      "color": "14FF73"
+    },
+    "message": {
+      "x": 148,
+      "y": 98,
+      "capHeight": 17,
+      "text": "Aquí estoy.",
+      "color": "FFFFFF"
+    },
+    "button": {
+      "x": 146,
+      "y": 142,
+      "w": 153,
+      "h": 52,
+      "stroke": 3,
+      "text": "Hablar",
+      "color": "14FF73"
+    }
+  }
+}

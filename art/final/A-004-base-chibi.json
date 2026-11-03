@@ -1,0 +1,21 @@
+{
+  "asset": "A-004-base-chibi.png",
+  "size": [1024, 1024],
+  "units": "píxeles de la imagen; origen arriba a la izquierda",
+  "faceAxisX": 540,
+  "mask": { "x": 342, "y": 516, "w": 447, "h": 186 },
+  "eyes": {
+    "left":  { "x": 425, "y": 610 },
+    "right": { "x": 655, "y": 610 },
+    "irisRadius": 47,
+    "rings": {
+      "outline": 1.45,
+      "green": 1.32,
+      "black": 1.12,
+      "iris": 1.0,
+      "pupil": 0.3
+    }
+  },
+  "mouth": { "x": 540, "y": 735, "width": 98, "zigzagHeight": 22, "stroke": 5 },
+  "source": "Medido sobre A-004 v1 y proporciones de la cabeza en calma de A-003 (separación de ojos 0,54 del ancho de la máscara, iris 0,2 de la separación, boca 0,41 de la separación y 0,18 de alto de máscara bajo ella). Los anillos son relativos al radio del iris."
+}

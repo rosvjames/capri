@@ -15,9 +15,11 @@ final class NotchController {
     init() {
         screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? NSScreen.screens[0]
         model = AssistantModel(metrics: NotchMetrics.of(screen))
+        // Decodifica los fotogramas de Capri ahora, no al abrir el panel por primera vez.
+        _ = NotchFrames.shared
 
-        let size = CGSize(width: Layout.expandedW + 2 * Layout.panelPadX, height: Layout.expandedH + Layout.panelPadY)
-        let frame = NSRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height,
+        let size = model.windowSize
+        let frame = NSRect(x: screen.frame.midX + model.metrics.centerOffset - size.width / 2, y: screen.frame.maxY - size.height,
                            width: size.width, height: size.height)
         panel = NotchPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
@@ -33,7 +35,16 @@ final class NotchController {
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
 
-        installHoverMonitors()
+        // CAPRI_ESTADO fija un estado e ignora el ratón, para medir rendimiento sin interferencias.
+        if let fixed = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] {
+            switch fixed {
+            case "abierto": setExpanded(true)
+            case "activo": model.mode = .speaking
+            default: break
+            }
+        } else {
+            installHoverMonitors()
+        }
     }
 
     func setExpanded(_ value: Bool) {
@@ -44,10 +55,11 @@ final class NotchController {
     }
 
     private func hoverRect(expanded: Bool) -> NSRect {
-        let m = model.metrics
-        let w = (expanded ? Layout.expandedW : m.width + 76) + (expanded ? 24 : 0)
-        let h = expanded ? Layout.expandedH + 10 : m.height + 2
-        return NSRect(x: screen.frame.midX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
+        let m = model.metrics, g = model.geometry
+        let w = expanded ? g.bodyWidth + 24 : m.width + 2 * Layout.collapsedSide
+        let h = expanded ? g.height + 10 : m.height + 2
+        let centerX = screen.frame.midX + m.centerOffset + (expanded ? g.offsetX : 0)
+        return NSRect(x: centerX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
     }
 
     private func handleMouseMoved() {

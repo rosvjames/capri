@@ -20,9 +20,13 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-08 | Abrir sitios | "Abre YouTube" | Local; abre la URL en el navegador por defecto |
 | C-09 | Música (Spotify) | "Pon tal canción", "pausa", "¿qué suena?" | AppleScript sobre Spotify |
 | C-10 | Interrumpir y silenciar | Esc la calla o cancela; modo silencio; se oculta en pantalla completa | Local |
+| C-29 | Música en el notch | Notch cerrado: carátula a un lado y barras al otro mientras suena algo. Panel: canción, artista y controles | Avisos de Spotify al cambiar de canción (sin consultar en bucle: 0 % de CPU en reposo) + AppleScript para los controles |
 
 ### Principio de diseño
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.
+
+### Capri es la protagonista del notch
+La información extra (música, uso de IA…) aparece cuando es relevante, por ejemplo al cambiar de canción, y después devuelve el panel a Capri. Va en la columna izquierda del panel o a los lados del notch cerrado, sin tocar el recorte de Capri. Si hace falta espacio, el panel se ensancha hacia la izquierda; sus fotogramas no cambian. La fecha y la hora no se muestran: la barra de menús ya tiene reloj.
 
 ## Después (v2+, no comprometido)
 
@@ -35,6 +39,7 @@ Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el
 - C-26 Narrar en el notch lo que hace Claude Code (hooks): acción actual, avisos de permiso, resumen al terminar
 - C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
 - C-28 Reacciones en espera sin gastar IA (miradas, gestos)
+- C-30 Uso de IA en el notch: consumo, créditos o límites de cada servicio (Claude, ChatGPT…). Cada servicio lo expone distinto (API con clave de administrador, archivos locales), así que se evalúa servicio por servicio
 
 Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.md`.
 

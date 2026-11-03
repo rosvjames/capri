@@ -1,14 +1,26 @@
 import SwiftUI
 
-/// Paleta provisional (carmesí / magenta / cian de glitch). Ajustar cuando haya referencias visuales.
+/// Paleta de Capri, medida sobre capturas de la serie.
 enum Theme {
-    static let crimson = Color(red: 1.0, green: 0.09, blue: 0.27)
-    static let magenta = Color(red: 1.0, green: 0.18, blue: 0.53)
-    static let cyan = Color(red: 0.0, green: 0.90, blue: 1.0)
+    static let ink = Color(hex: 0x0B0B12)
+    static let red = Color(hex: 0xFF1A47)
+    static let green = Color(hex: 0x2BF56C)
+    static let blue = Color(hex: 0x1F5FD6)
+    static let violet = Color(hex: 0x7A3CF0)
+    /// Negro del panel del notch, medido en la maqueta aprobada v3 (igual al fondo de los fotogramas).
+    static let panel = Color(hex: 0x020106)
     static let dim = Color.white.opacity(0.55)
 
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
+    }
+}
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(red: Double((hex >> 16) & 0xFF) / 255,
+                  green: Double((hex >> 8) & 0xFF) / 255,
+                  blue: Double(hex & 0xFF) / 255)
     }
 }
 
