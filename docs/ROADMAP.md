@@ -38,6 +38,14 @@ Rama: `fase-1/identidad-visual`.
 - ⬜ Esc para callarla, modo silencio, ocultarse en pantalla completa (C-10)
 - Hito: le hablas y repite lo que entendió, en voz
 
+## Fase 2b — Música en el notch (C-29)
+Justo después de la voz: da vida al notch sin depender de la IA.
+- ⬜ Leer la canción actual de Spotify por sus avisos de cambio (sin sondeo)
+- ⬜ Notch cerrado: carátula y barras mientras suena música
+- ⬜ Panel: canción, artista y controles (anterior, pausa, siguiente)
+- ⬜ Volver a Capri cuando no hay música o tras el aviso de cambio de canción
+- Hito: al cambiar de canción el notch la muestra, y en reposo sigue a 0 % de CPU
+
 ## Fase 3 — Cerebro (C-03, C-04, C-05)
 - ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor)
 - ⬜ Personalidad de Capri (prompt de sistema)
@@ -58,4 +66,4 @@ Rama: `fase-1/identidad-visual`.
 - ⬜ Release v1.0
 
 ## Fase 6+ — Extras
-Capacidades C-20 en adelante, según interés.
+Capacidades C-20 en adelante, según interés. Candidata destacada: C-30, uso de IA en el notch.
