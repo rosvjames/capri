@@ -49,7 +49,7 @@ Rama: `fase-2/voz`, fusionada en `main`. Decisiones: ⌘ derecho mantenido (D-2)
 ## Fase 2b — Música en el notch (C-29) 🟨
 Rama: `fase-2b/musica`. Solo Spotify. Decisiones: notch cerrado con carátula y barras (no el ojo de Capri), barras con animación ligera solo mientras suena, panel sin barra de progreso ni volumen.
 
-1. ⬜ **Leer Spotify** (`MusicWatcher.swift`): escuchar el aviso `com.spotify.client.PlaybackStateChanged` (canción, artista, álbum, estado, ID), que llega en cada cambio, sin consultar en bucle. Al arrancar, si Spotify ya está abierto, leer el estado una vez; nunca abrirlo por preguntar.
+1. ✅ **Leer Spotify** (`MusicWatcher.swift` → `model.nowPlaying`): el aviso `com.spotify.client.PlaybackStateChanged` (canción, artista, álbum, estado, ID) llega en cada cambio, sin consultar en bucle. Hay que pedirlo con entrega inmediata: Capri nunca es la app activa y macOS retendría los avisos. Al cerrar Spotify llega `Stopped` y además se vigila su cierre. Probado con pausa, reanudar, siguiente y cerrar; 0 % de CPU en reposo. Si Spotify ya sonaba al abrir Capri, no se sabe hasta el siguiente cambio: la lectura inicial va con el permiso del paso 2.
 2. ⬜ **Permiso de Automatización** sobre Spotify (`NSAppleEventsUsageDescription`), dentro del flujo de `Permissions.swift`: se pide la primera vez que hace falta (carátula o controles), no al arrancar.
 3. ⬜ **Carátula**: al cambiar de canción, pedir `artwork url` por AppleScript, descargarla una vez y guardarla por ID de canción.
 4. ⬜ **Notch cerrado**: carátula a la izquierda y barras a la derecha mientras suena. Las barras se animan a pocos cuadros por segundo y se detienen en pausa. Mientras escucha o habla, la chibi de Capri tiene prioridad.

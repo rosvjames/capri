@@ -18,7 +18,7 @@ tipo(ámbito): resumen en imperativo y minúsculas
 | `chore` | Configuración, dependencias, herramientas |
 | `test` | Pruebas |
 
-Ámbitos: `notch`, `voz`, `llm`, `acciones`, `arte`, `app`, `docs`.
+Ámbitos: `notch`, `voz`, `musica`, `llm`, `acciones`, `arte`, `app`, `docs`.
 
 Ejemplos:
 - `feat(voz): añadir push-to-talk con atajo global`
