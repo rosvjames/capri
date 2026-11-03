@@ -61,6 +61,7 @@ final class AssistantModel: ObservableObject {
     @Published var expandedAt = Date()
     let metrics: NotchMetrics
     let geometry: ExpandedGeometry
+    let permissions = PermissionCenter()
 
     init(metrics: NotchMetrics) {
         self.metrics = metrics

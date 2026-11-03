@@ -138,6 +138,7 @@ struct CapriFramePlayer: View {
 struct ExpandedPresenceView: View {
     let geometry: ExpandedGeometry
     let origin: Date
+    @ObservedObject var permissions: PermissionCenter
 
     // Tamaños de letra calibrados contra la maqueta (px de maqueta; ver tools/preparar_notch_v3.py).
     private enum FontPx {
@@ -157,8 +158,9 @@ struct ExpandedPresenceView: View {
 
             if let title = l.ui["title"], let dot = l.ui["dot"], let message = l.ui["message"], let button = l.ui["button"] {
                 text(title, size: FontPx.title, weight: .bold, kerning: 0.4)
+                // Verde: lista para hablar. Rojo: le falta algún permiso.
                 Circle()
-                    .fill(Color(hexString: dot.color))
+                    .fill(permissions.allGranted ? Color(hexString: dot.color) : Theme.red)
                     .frame(width: (dot.size ?? 15) * g.s, height: (dot.size ?? 15) * g.s)
                     .offset(x: g.rect(dot.x, dot.y, 0, 0).minX, y: g.rect(dot.x, dot.y, 0, 0).minY)
                 text(message, size: FontPx.message, weight: .semibold)
@@ -185,13 +187,15 @@ struct ExpandedPresenceView: View {
         let g = geometry
         let frame = g.rect(e.x, e.y, e.w ?? 0, e.h ?? 0)
         let green = Color(hexString: e.color)
+        let ready = permissions.allGranted
         return Button {
-            // La voz llega en la Fase 2.
+            // Sin permisos, el botón los pide. Con ellos, hablar llega en el paso 4 de la Fase 2.
+            if !ready { permissions.requestMissing() }
         } label: {
             HStack(spacing: 11 * g.s) {
-                Image(systemName: "mic")
+                Image(systemName: ready ? "mic" : "lock.open")
                     .font(.system(size: FontPx.icon * g.s, weight: .medium))
-                Text(e.text ?? "")
+                Text(ready ? (e.text ?? "") : "Permisos")
                     .font(.system(size: FontPx.button * g.s, weight: .semibold))
             }
             .foregroundStyle(green)
@@ -200,7 +204,8 @@ struct ExpandedPresenceView: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help("Disponible cuando Capri tenga voz")
+        .help(ready ? "Disponible cuando Capri tenga voz"
+                    : "Capri necesita: " + permissions.missing.map(\.title).joined(separator: ", "))
         .offset(x: frame.minX, y: frame.minY)
     }
 }

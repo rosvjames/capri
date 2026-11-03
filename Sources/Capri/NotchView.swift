@@ -82,7 +82,7 @@ struct NotchView: View {
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
         Group {
             if model.expanded {
-                ExpandedPresenceView(geometry: model.geometry, origin: model.expandedAt)
+                ExpandedPresenceView(geometry: model.geometry, origin: model.expandedAt, permissions: model.permissions)
                     .padding(.leading, top)
             }
         }
