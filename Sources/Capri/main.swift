@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installPushToTalk(notch)
         music.onChange = { notch.model.nowPlaying = $0 }
         music.onArtwork = { notch.model.artwork = $0 }
+        notch.model.musicCommand = { [music] in music.spotify.send($0) }
         music.start()
 
         // Modo demostración: CAPRI_DEMO=1 abre el notch y cicla los estados.

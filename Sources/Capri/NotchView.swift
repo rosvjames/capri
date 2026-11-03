@@ -13,10 +13,12 @@ struct NotchView: View {
         let top: CGFloat = model.expanded ? g.topRadius : 6
         let bottom: CGFloat = model.expanded ? g.bottomRadius : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
-        let w = (model.expanded ? g.bodyWidth : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
+        // Abierto con música, el panel crece hacia la izquierda: Capri no se mueve (C-29).
+        let music = model.expanded ? model.musicColumnWidth : 0
+        let w = (model.expanded ? g.bodyWidth + music : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
         let h = model.expanded ? g.height : m.height
         // Abierto, el panel sigue la maqueta v3 (no está centrado en la cámara); cerrado, se centra en ella.
-        let dx = model.expanded ? g.offsetX : 0
+        let dx = model.expanded ? g.offsetX - music / 2 : 0
 
         ZStack(alignment: .top) {
             NotchShape(topRadius: top, bottomRadius: bottom)
@@ -99,8 +101,14 @@ struct NotchView: View {
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
         Group {
             if model.expanded {
-                ExpandedPresenceView(model: model, permissions: model.permissions)
-                    .padding(.leading, top)
+                HStack(alignment: .top, spacing: 0) {
+                    if model.nowPlaying != nil {
+                        MusicColumnView(model: model)
+                            .transition(.opacity)
+                    }
+                    ExpandedPresenceView(model: model, permissions: model.permissions)
+                }
+                .padding(.leading, top)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

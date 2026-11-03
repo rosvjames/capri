@@ -67,6 +67,10 @@ final class AssistantModel: ObservableObject {
     @Published var nowPlaying: NowPlaying?
     /// Carátula de `nowPlaying`, ya reducida; nil mientras llega o si no se pudo conseguir.
     @Published var artwork: NSImage?
+    /// Controles de Spotify desde el panel; lo conecta AppDelegate.
+    var musicCommand: (MusicCommand) -> Void = { _ in }
+    /// Puntos que el panel abierto se ensancha hacia la izquierda para la columna de música (C-29).
+    var musicColumnWidth: CGFloat { nowPlaying == nil ? 0 : MusicColumn.width * geometry.s }
     /// Nivel del micrófono mientras escucha (0…1).
     @Published var audioLevel: CGFloat = 0
     /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
@@ -82,9 +86,10 @@ final class AssistantModel: ObservableObject {
         geometry = ExpandedGeometry(metrics: metrics)
     }
 
-    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para el panel abierto.
+    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para el panel abierto,
+    /// también cuando se ensancha con la columna de música.
     var windowSize: CGSize {
-        let halfWidth = max(-geometry.minX, geometry.maxX) + geometry.topRadius
+        let halfWidth = max(-geometry.minX + MusicColumn.width * geometry.s, geometry.maxX) + geometry.topRadius
         return CGSize(width: 2 * (halfWidth + Layout.panelPadX), height: geometry.height + Layout.panelPadY)
     }
 }

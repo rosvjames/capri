@@ -1,6 +1,18 @@
 import AppKit
 import os
 
+enum MusicCommand {
+    case previous, playPause, next
+
+    fileprivate var script: String {
+        switch self {
+        case .previous: "previous track"
+        case .playPause: "playpause"
+        case .next: "next track"
+        }
+    }
+}
+
 /// Habla con Spotify por AppleScript: lo que el aviso no trae (lo que ya sonaba, la carátula) y, más adelante,
 /// los controles (C-29).
 ///
@@ -54,6 +66,16 @@ final class SpotifyRemote {
             guard f.count == 2, f[0] == trackID, let url = URL(string: f[1]), url.scheme == "https" else { return done(nil) }
             done(url)
         }
+    }
+
+    /// Anterior, pausa/reproducir o siguiente. El cambio llega después por el aviso de Spotify.
+    func send(_ command: MusicCommand) {
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)" to \(command.script)
+            end if
+            return ""
+            """, ask: true) { _ in }
     }
 
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.
