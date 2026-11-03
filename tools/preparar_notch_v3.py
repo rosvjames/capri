@@ -7,6 +7,7 @@ Uso (desde la raíz del repo, necesita ffmpeg):
 Lee art/inbox/notch-fiel-prueba-v3/ (fotogramas de 1024x352 con la interfaz de maqueta)
 y escribe en art/final/notch-fiel-v3/ y en Sources/Capri/Resources/:
   - un PNG por dibujo usado en timing-final.json, todos con el mismo recorte del personaje
+  - los 12 fotogramas de Capri hablando (3 bocas × 4 estados de ojos), con el mismo recorte
   - la secuencia (timing) y la geometría de la maqueta (layout)
 Los originales no se modifican.
 
@@ -28,6 +29,10 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "art/inbox/notch-fiel-prueba-v3"
 DST = ROOT / "art/final/notch-fiel-v3"
 RES = ROOT / "Sources/Capri/Resources"
+# Capri hablando: 3 bocas × 4 estados de ojos compuestos sobre 00-reference (solo cambian boca y ojos).
+HABLA = ROOT / "art/inbox/A-006-panel-habla/preview-v2/frames"
+MOUTHS = ["0-cerrada", "1-media", "2-abierta"]
+EYES = ["0-ojos-abiertos", "1-parpadeo-inicio", "2-medio-parpadeo", "3-ojos-cerrados"]
 
 CANVAS = (1024, 352)
 # Geometría medida sobre frames/00-reference.png (px de la maqueta; y=0 es el borde superior de la pantalla).
@@ -134,6 +139,20 @@ def main():
                        input=bytes(paint(img, mask)), check=True)
         shutil.copyfile(out, RES / f"notch-v3-{name}.png")
 
+    # Fotogramas de habla: mismo recorte y misma máscara que el loop, para que encajen sin saltos.
+    habla = {f"{m}-{e}": crop(read_rgba(HABLA / f"{m}-{e}.png")) for m in MOUTHS for e in EYES}
+    for name, img in habla.items():
+        diff = sum(1 for k, m in enumerate(ui) if m and img[k * 4:k * 4 + 3] != ref[k * 4:k * 4 + 3])
+        if diff:
+            sys.exit(f"habla {name}: {diff} píxeles de la zona de interfaz distintos de 00-reference")
+    (DST / "frames" / "habla").mkdir(parents=True, exist_ok=True)
+    for name, img in habla.items():
+        out = DST / "frames" / "habla" / f"{name}.png"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgba",
+                        "-s", f"{CROP['w']}x{CROP['h']}", "-i", "-", "-pix_fmt", "rgba", str(out)],
+                       input=bytes(paint(img, mask)), check=True)
+        shutil.copyfile(out, RES / f"notch-v3-habla-{name}.png")
+
     timing_out = {
         "source": "art/inbox/notch-fiel-prueba-v3/timing-final.json",
         "sequenceDurationMs": timing["sequenceDurationMs"],
@@ -154,7 +173,7 @@ def main():
         text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
         (DST / f"{name}.json").write_text(text)
         (RES / f"notch-v3-{name}.json").write_text(text)
-    print(f"{len(crops)} fotogramas, {sum(mask)} píxeles de maqueta pintados por fotograma, {len(sequence)} exposiciones")
+    print(f"{len(crops)} fotogramas del loop y {len(habla)} de habla, {sum(mask)} píxeles de maqueta pintados por fotograma, {len(sequence)} exposiciones")
 
 
 if __name__ == "__main__":
