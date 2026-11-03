@@ -37,7 +37,7 @@ Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México
    - ✅ `tools/empaquetar.sh [--abrir]` genera y firma `build/Capri.app` (`Info.plist` en `app/`).
    - ✅ Firma estable con el certificado propio "Capri Dev": la identidad de la app (identificador + certificado) no cambia entre compilaciones, así que los permisos se conservan.
 2. ✅ **Permisos** (`Permissions.swift`): si falta alguno, el punto del panel se pone rojo y el botón pasa a **Permisos**, que los pide en orden (micrófono → voz → accesibilidad) o abre el ajuste correcto si ya se denegaron. La accesibilidad se detecta en vivo. Probado en la app empaquetada; los permisos se conservan al recompilar.
-3. ⬜ **Atajo ⌘ derecho**: mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Si se usa como modificador (⌘C con el ⌘ derecho) no se activa. Requiere el permiso de accesibilidad.
+3. ✅ **Atajo ⌘ derecho** (`PushToTalk.swift`): mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Un toque corto no hace nada; si se pulsa otra tecla o modificador mientras se mantiene, se cancela. Los monitores se instalan al conceder accesibilidad. Por ahora solo cambia el estado del notch a "escuchando".
 4. ⬜ **Escuchar**: micrófono + reconocimiento `es-MX` en el dispositivo cuando esté disponible, con la transcripción en vivo en el notch y el nivel del micrófono para animar la onda.
 5. ⬜ **Responder en voz**: voz del sistema `es_MX` (se elige escuchando las disponibles); en esta fase, eco: "Entendí: …".
 6. ⬜ **Estados del notch conectados al flujo real**: reposo → escuchando → respondiendo → reposo. Al hablar con el notch cerrado, el panel se abre para mostrar la transcripción y la respuesta, y se cierra solo al terminar.
