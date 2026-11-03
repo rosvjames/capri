@@ -1,7 +1,7 @@
 import AVFoundation
 import os
 
-/// Demo con Qwen local y la referencia 2 elegida. CAPRI_TTS=paulina permite comparar con la voz anterior.
+/// Voz local con Qwen y la referencia elegida; Paulina con CAPRI_TTS=paulina o si falta la voz local.
 ///
 /// Qwen entrega un WAV; Paulina entrega bloques (`write`). Ambos pasan por el mismo
 /// `AVAudioPlayerNode` y su volumen se mide cada 20 ms para sincronizar la boca (`level()`).
@@ -16,7 +16,8 @@ final class Speaker {
     private let player = AVAudioPlayerNode()
     private let qwen = LocalQwen()
     private var engineStopWork: DispatchWorkItem?
-    private let usePaulina = ProcessInfo.processInfo.environment["CAPRI_TTS"] == "paulina"
+    /// Paulina si se pide (CAPRI_TTS=paulina) o si falta la voz local (en un clon del repositorio no está la referencia).
+    private let usePaulina = ProcessInfo.processInfo.environment["CAPRI_TTS"] == "paulina" || !LocalQwen.isAvailable
     private var connectedFormat: AVAudioFormat?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "voz")
 

@@ -70,12 +70,25 @@ final class LocalQwen {
         if previous?.isRunning == true { previous?.terminate() }
     }
 
+    private static var python: String {
+        ProcessInfo.processInfo.environment["CAPRI_QWEN_PYTHON"]
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".venvs/capri-tts/bin/python").path
+    }
+
+    /// Hay entorno de Python y referencia de voz (WAV y su transcripción .txt). La referencia no está en el
+    /// repositorio, así que en un clon nuevo falta y Capri usa la voz del sistema.
+    static var isAvailable: Bool {
+        FileManager.default.isExecutableFile(atPath: python)
+            && Bundle.module.url(forResource: "qwen-speaker", withExtension: "py") != nil
+            && Bundle.module.url(forResource: "capri-qwen-ref2", withExtension: "wav") != nil
+            && Bundle.module.url(forResource: "capri-qwen-ref2", withExtension: "txt") != nil
+    }
+
     private func startIfNeeded() throws {
         if process?.isRunning == true { return }
         shutdown()
-        let python = ProcessInfo.processInfo.environment["CAPRI_QWEN_PYTHON"]
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".venvs/capri-tts/bin/python").path
-        guard FileManager.default.isExecutableFile(atPath: python),
+        let python = Self.python
+        guard Self.isAvailable,
               let script = Bundle.module.url(forResource: "qwen-speaker", withExtension: "py"),
               let reference = Bundle.module.url(forResource: "capri-qwen-ref2", withExtension: "wav")
         else { throw NSError(domain: "Capri.Qwen", code: 1, userInfo: [NSLocalizedDescriptionKey: "Falta el entorno local de Qwen o la referencia de voz."]) }
