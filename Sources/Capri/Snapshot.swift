@@ -23,7 +23,7 @@ func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, 
     }))
     model.expandedAt = Date().addingTimeInterval(-elapsedMs / 1000)
     if music {
-        model.nowPlaying = NowPlaying(trackID: "spotify:track:prueba", title: "Canción de prueba", artist: "Artista de prueba",
+        model.nowPlaying = NowPlaying(trackID: "spotify:track:prueba", title: "Canción de prueba con un título largo", artist: "Artista de prueba",
                                       album: "Álbum", isPlaying: true)
         model.artwork = syntheticArtwork()
     }

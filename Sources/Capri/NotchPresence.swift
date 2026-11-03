@@ -138,6 +138,8 @@ struct CapriFramePlayer: View {
 struct ExpandedPresenceView: View {
     @ObservedObject var model: AssistantModel
     @ObservedObject var permissions: PermissionCenter
+    /// CAPRI, mensaje y Hablar; con música se ocultan (C-29).
+    var showsInterface = true
 
     private var geometry: ExpandedGeometry { model.geometry }
 
@@ -165,7 +167,7 @@ struct ExpandedPresenceView: View {
             .frame(width: r.width, height: r.height)
             .offset(x: r.minX, y: r.minY)
 
-            if let title = l.ui["title"], let dot = l.ui["dot"], let message = l.ui["message"], let button = l.ui["button"] {
+            if showsInterface, let title = l.ui["title"], let dot = l.ui["dot"], let message = l.ui["message"], let button = l.ui["button"] {
                 text(title, size: FontPx.title, weight: .bold, kerning: 0.4)
                 // Verde: lista para hablar. Rojo: le falta algún permiso.
                 Circle()
