@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.rosvjames.capri</string>
+	<key>CFBundleName</key>
+	<string>Capri</string>
+	<key>CFBundleDisplayName</key>
+	<string>Capri</string>
+	<key>CFBundleExecutable</key>
+	<string>Capri</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Capri usa el micrófono para escucharte mientras mantienes el ⌘ derecho o pulsas Hablar.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Capri convierte tu voz en texto para entender lo que le pides.</string>
+</dict>
+</plist>
