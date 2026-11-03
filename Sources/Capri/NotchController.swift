@@ -11,6 +11,7 @@ final class NotchController {
     private let panel: NotchPanel
     private let screen: NSScreen
     private var collapseWork: DispatchWorkItem?
+    private var fullscreen: FullscreenWatcher?
 
     init() {
         screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? NSScreen.screens[0]
@@ -35,6 +36,12 @@ final class NotchController {
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
 
+        // En pantalla completa (vídeo, juego, presentación) Capri desaparece; sigue escuchando el ⌘ derecho.
+        let watcher = FullscreenWatcher(screen: screen)
+        watcher.onChange = { [weak self] isFullscreen in self?.setHidden(isFullscreen) }
+        fullscreen = watcher
+        if watcher.isFullscreen { setHidden(true) }
+
         // CAPRI_ESTADO fija un estado e ignora el ratón, para medir rendimiento sin interferencias.
         if let fixed = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] {
             switch fixed {
@@ -44,6 +51,15 @@ final class NotchController {
             }
         } else {
             installHoverMonitors()
+        }
+    }
+
+    private func setHidden(_ hidden: Bool) {
+        if hidden {
+            setExpanded(false)
+            panel.orderOut(nil)
+        } else {
+            panel.orderFrontRegardless()
         }
     }
 
@@ -77,7 +93,7 @@ final class NotchController {
                 collapseWork = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
             }
-        } else if hoverRect(expanded: false).contains(p) {
+        } else if panel.isVisible, hoverRect(expanded: false).contains(p) {
             setExpanded(true)
         }
     }
