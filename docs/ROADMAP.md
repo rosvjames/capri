@@ -30,7 +30,7 @@ Rama: `fase-1/identidad-visual`, fusionada en `main`.
 - ➡️ Notch cerrado con fotogramas: pasa a la Fase 2, donde existen sus estados
 - ✅ Hito: el notch muestra a Capri (loop aprobado al abrirlo; cara chibi según el estado al estar cerrado y activo), con 0 % de CPU en reposo
 
-## Fase 2 — Bucle de voz (C-01) 🟨
+## Fase 2 — Bucle de voz (C-01) ✅
 Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México (D-8), voz del sistema (D-5).
 
 1. ✅ **App empaquetada** (`Capri.app`, script en `tools/`): macOS solo concede micrófono, reconocimiento de voz y accesibilidad a una app con `Info.plist` y firma. Lanzada como binario suelto, los permisos se atribuirían a la terminal.
@@ -40,12 +40,10 @@ Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México
 3. ✅ **Atajo ⌘ derecho** (`PushToTalk.swift`): mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Un toque corto no hace nada; si se pulsa otra tecla o modificador mientras se mantiene, se cancela. Los monitores se instalan al conceder accesibilidad. Por ahora solo cambia el estado del notch a "escuchando".
 4. ✅ **Escuchar** (`SpeechListener.swift`): micrófono + reconocimiento `es-MX` en el propio Mac (sin enviar audio fuera). La frase aparece en vivo en el panel (dos líneas, mostrando el final) y la onda del notch cerrado sigue el nivel real del micrófono. El botón Hablar empieza y termina la escucha. Se añaden los signos de apertura ¿ ¡.
 5. ✅ **Responder en voz** (`Speaker.swift`): Paulina (es-MX), elegida escuchando las voces; se usa automáticamente su mejor calidad instalada; hoy, Paulina mejorada (Enhanced), descargada en Ajustes del Sistema → Accesibilidad → Contenido leído. En esta fase, eco: "Entendí: …" o "No te escuché.". Hablarle mientras responde la calla.
-6. 🟨 **Estados del notch conectados al flujo real**: reposo → escuchando (notch cerrado, chibi) → procesando → respondiendo (el notch se despliega y Capri habla en el panel) → reposo (se cierra). La franja de texto pasa a la Fase 3.
-   - ✅ Estados con el notch cerrado
-   - ⬜ Desplegar el panel mientras responde y cerrarlo al terminar
+6. ✅ **Estados del notch conectados al flujo real**: reposo → escuchando (notch cerrado, chibi) → procesando → respondiendo (el notch se despliega y Capri habla en el panel) → reposo (se cierra 1,5 s después, salvo con el ratón encima). Abierto así, no muestra lo que dictaste. La franja de texto pasa a la Fase 3.
 7. ✅ **C-10**: Esc la calla o cancela la escucha (macOS también entrega el Esc a la app de delante). En pantalla completa Capri se oculta y sigue respondiendo al ⌘ derecho (`FullscreenWatcher.swift`: tipo de escritorio activo, sin consultar en bucle). El modo silencio pasa a C-24: hoy Capri solo habla cuando se lo pides.
-8. 🟨 **Capri hablando en el panel**: dos bocas nuevas (entreabierta y abierta) sobre el fotograma v3 en reposo, como en la serie. Al responder, la boca cambia a saltos siguiendo las palabras de la voz, con parpadeos de vez en cuando. La escucha conserva la chibi actual del notch cerrado.
-- Hito: mantienes ⌘ derecho, dices una frase, sueltas, y Capri la muestra y responde en voz "Entendí: …". En reposo sigue a 0 % de CPU.
+8. ✅ **Capri hablando en el panel** (`TalkingFace.swift`): 12 fotogramas (3 bocas × 4 estados de ojos) sobre la pose de reposo del v3. La boca sigue el volumen de la voz que se está oyendo, medido cada 20 ms y sincronizado con la reproducción (`Speaker.swift` reproduce el audio él mismo); cambia a saltos, con al menos 90 ms por dibujo. Parpadea cada 4–8 s. La escucha conserva la chibi del notch cerrado.
+- ✅ Hito: mantienes ⌘ derecho, dices una frase, sueltas, y el notch se despliega con Capri respondiéndote en voz y moviendo la boca. En reposo sigue a 0 % de CPU.
 
 ## Fase 2b — Música en el notch (C-29)
 Justo después de la voz: da vida al notch sin depender de la IA.
