@@ -33,8 +33,9 @@ Rama: `fase-1/identidad-visual`, fusionada en `main`.
 ## Fase 2 — Bucle de voz (C-01) 🟨
 Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México (D-8), voz del sistema (D-5).
 
-1. ⬜ **App empaquetada** (`Capri.app`, script en `tools/`): macOS solo concede micrófono, reconocimiento de voz y accesibilidad a una app con `Info.plist` y firma. Lanzada como binario suelto, los permisos se atribuirían a la terminal.
-   - Firma estable con un certificado propio de desarrollo, para no tener que volver a dar permisos tras cada compilación (la firma ad-hoc cambia en cada build).
+1. ✅ **App empaquetada** (`Capri.app`, script en `tools/`): macOS solo concede micrófono, reconocimiento de voz y accesibilidad a una app con `Info.plist` y firma. Lanzada como binario suelto, los permisos se atribuirían a la terminal.
+   - ✅ `tools/empaquetar.sh [--abrir]` genera y firma `build/Capri.app` (`Info.plist` en `app/`).
+   - ⬜ Firma estable: certificado propio "Capri Dev" en el llavero (lo crea el usuario). Sin él la firma es ad-hoc y macOS vuelve a pedir accesibilidad tras cada compilación.
 2. ⬜ **Permisos**: pedir micrófono, reconocimiento de voz y accesibilidad cuando hagan falta; si falta uno, el panel lo dice y abre el ajuste correcto del sistema.
 3. ⬜ **Atajo ⌘ derecho**: mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Si se usa como modificador (⌘C con el ⌘ derecho) no se activa. Requiere el permiso de accesibilidad.
 4. ⬜ **Escuchar**: micrófono + reconocimiento `es-MX` en el dispositivo cuando esté disponible, con la transcripción en vivo en el notch y el nivel del micrófono para animar la onda.

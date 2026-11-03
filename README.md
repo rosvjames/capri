@@ -52,11 +52,12 @@ Detalle en [docs/CAPACIDADES.md](docs/CAPACIDADES.md).
 Requiere macOS 14+ y las herramientas de línea de comandos de Xcode. Está pensada para Macs con notch.
 
 ```bash
-swift build -c release
-.build/release/Capri
+tools/empaquetar.sh --abrir
 ```
 
-Pasa el ratón por el notch para abrir el panel. Para fijar un estado sin usar el ratón: `CAPRI_ESTADO=reposo|activo|abierto .build/release/Capri`.
+Genera y abre `build/Capri.app`. Para desarrollo rápido, sin permisos de micrófono ni accesibilidad, también se puede ejecutar el binario: `swift build -c release && .build/release/Capri`.
+
+Pasa el ratón por el notch para abrir el panel. Para fijar un estado sin usar el ratón: `open --env CAPRI_ESTADO=abierto build/Capri.app` (o `reposo`, `activo`).
 
 ## Stack
 Swift, SwiftUI y AppKit con Swift Package Manager. El panel es una ventana transparente sobre la barra de menús, y su geometría se calcula a partir de las medidas reales del notch de cada pantalla.
