@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
+    let music = MusicWatcher()
     private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -16,6 +17,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.notch = notch
         installStatusItem()
         installPushToTalk(notch)
+        music.onChange = { notch.model.nowPlaying = $0 }
+        music.onArtwork = { notch.model.artwork = $0 }
+        notch.model.musicCommand = { [music] in music.spotify.send($0) }
+        music.start()
 
         // Modo demostración: CAPRI_DEMO=1 abre el notch y cicla los estados.
         if ProcessInfo.processInfo.environment["CAPRI_DEMO"] == "1" {
@@ -122,7 +127,8 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     let mode = args.count > i + 2 ? (modes.first { "\($0)" == args[i + 2] } ?? .idle) : .idle
     let expanded = !args.contains("colapsado")
     let elapsed = args.first { $0.hasPrefix("t=") }.flatMap { Double($0.dropFirst(2)) } ?? 0
-    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos")) }
+    MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos"),
+                                       music: args.contains("musica")) }
     exit(0)
 }
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {

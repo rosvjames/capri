@@ -63,6 +63,15 @@ final class AssistantModel: ObservableObject {
     @Published var transcript = ""
     /// El panel se abrió solo porque Capri habla: entonces no se muestra lo que dictaste ("voz primero").
     @Published var openedForSpeech = false
+    /// Lo que suena en Spotify, o nil si no suena ni está en pausa (C-29).
+    @Published var nowPlaying: NowPlaying?
+    /// Carátula de `nowPlaying`, ya reducida; nil mientras llega o si no se pudo conseguir.
+    @Published var artwork: NSImage?
+    /// Controles de Spotify desde el panel; lo conecta AppDelegate.
+    var musicCommand: (MusicCommand) -> Void = { _ in }
+    /// El panel abierto muestra la música en lugar de la columna de Capri: hay canción y Capri está en reposo.
+    /// Si escucha, piensa o habla, el panel vuelve a ser suyo (C-29).
+    var showsMusicPanel: Bool { nowPlaying != nil && mode == .idle }
     /// Nivel del micrófono mientras escucha (0…1).
     @Published var audioLevel: CGFloat = 0
     /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.

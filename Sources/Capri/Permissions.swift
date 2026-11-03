@@ -28,6 +28,27 @@ enum Permission: CaseIterable {
 
 enum PermissionState { case granted, notDetermined, denied }
 
+/// Permiso de Automatización sobre Spotify (carátula y controles, C-29). No es un `Permission`:
+/// es opcional, así que no pone el punto en rojo ni bloquea el ⌘ derecho; sin él solo falta la carátula.
+enum SpotifyAutomation {
+    /// Con `ask` muestra el aviso del sistema si aún no se respondió y bloquea hasta la respuesta:
+    /// llamar fuera del hilo principal. Devuelve nil si no se puede saber (Spotify cerrado).
+    static func state(ask: Bool) -> PermissionState? {
+        var target = AEDesc()
+        let created = MusicWatcher.spotifyID.withCString {
+            AECreateDesc(DescType(typeApplicationBundleID), $0, strlen($0), &target)
+        }
+        guard created == noErr else { return nil }
+        defer { AEDisposeDesc(&target) }
+        switch Int(AEDeterminePermissionToAutomateTarget(&target, AEEventClass(typeWildCard), AEEventID(typeWildCard), ask)) {
+        case Int(noErr): return .granted
+        case errAEEventWouldRequireUserConsent: return .notDetermined
+        case errAEEventNotPermitted: return .denied
+        default: return nil
+        }
+    }
+}
+
 /// Estado de los permisos y su solicitud, en orden: micrófono → voz → accesibilidad.
 final class PermissionCenter: ObservableObject {
     @Published private(set) var states: [Permission: PermissionState] = [:]
