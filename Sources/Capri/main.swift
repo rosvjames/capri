@@ -30,8 +30,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// En la Fase 2 la respuesta es un eco de lo entendido; la IA llega en la Fase 3.
     private func installPushToTalk(_ notch: NotchController) {
         let model = notch.model, listener = listener, speaker = speaker
-        speaker.onStart = { model.mode = .speaking }
-        speaker.onFinish = { if model.mode == .speaking { model.mode = .idle } }
+        speaker.onStart = {
+            TalkingFace.shared.reset()
+            model.mode = .speaking
+            notch.showWhileSpeaking()
+        }
+        speaker.onFinish = {
+            guard model.mode == .speaking else { return }
+            model.mode = .idle
+            model.expandedAt = Date()  // el loop vuelve a empezar desde la pose en la que habló
+            notch.speechEnded()
+        }
+        model.speechLevel = { speaker.level() }
         listener.onPartial = { model.transcript = $0 }
         listener.onLevel = { model.audioLevel = $0 }
         listener.onFinal = { text in
@@ -70,7 +80,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speaker.stop()
             model.mode = .idle
         }
-        model.toggleTalk = { listener.isListening ? end() : begin() }
+        model.toggleTalk = {
+            if speaker.isSpeaking { return speaker.stop() }
+            listener.isListening ? end() : begin()
+        }
         // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
         accessibilityWatch = model.permissions.$states
             .map { $0[.accessibility] == .granted }

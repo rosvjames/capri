@@ -12,12 +12,16 @@ final class NotchController {
     private let screen: NSScreen
     private var collapseWork: DispatchWorkItem?
     private var fullscreen: FullscreenWatcher?
+    /// Mientras Capri habla el panel no se cierra al apartar el ratón.
+    private var holdOpen = false
+    private let fixedState = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] != nil
 
     init() {
         screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? NSScreen.screens[0]
         model = AssistantModel(metrics: NotchMetrics.of(screen))
         // Decodifica los fotogramas de Capri ahora, no al abrir el panel por primera vez.
         _ = NotchFrames.shared
+        _ = TalkingFace.shared
 
         let size = model.windowSize
         let frame = NSRect(x: screen.frame.midX + model.metrics.centerOffset - size.width / 2, y: screen.frame.maxY - size.height,
@@ -54,6 +58,33 @@ final class NotchController {
         }
     }
 
+    /// Capri empieza a responder: el notch se despliega para verla hablar (salvo en pantalla completa).
+    func showWhileSpeaking() {
+        guard panel.isVisible else { return }
+        holdOpen = true
+        collapseWork?.cancel()
+        if !model.expanded { model.openedForSpeech = true }
+        setExpanded(true)
+    }
+
+    /// Capri terminó de hablar: el panel se cierra en un momento, salvo que el ratón esté encima.
+    func speechEnded() {
+        holdOpen = false
+        guard model.expanded, !fixedState else { return }
+        scheduleCollapse(after: 1.5)
+    }
+
+    private func scheduleCollapse(after delay: TimeInterval) {
+        collapseWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.collapseWork = nil
+            if !self.holdOpen, !self.hoverRect(expanded: true).contains(NSEvent.mouseLocation) { self.setExpanded(false) }
+        }
+        collapseWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
     private func setHidden(_ hidden: Bool) {
         if hidden {
             setExpanded(false)
@@ -69,7 +100,10 @@ final class NotchController {
         model.expanded = value
         panel.ignoresMouseEvents = !value
         // Pudo cambiar los permisos en Ajustes del Sistema mientras el panel estaba cerrado.
-        if value { model.permissions.refresh() } else if model.mode == .idle { model.transcript = "" }
+        if value { model.permissions.refresh() } else {
+            model.openedForSpeech = false
+            if model.mode == .idle { model.transcript = "" }
+        }
     }
 
     private func hoverRect(expanded: Bool) -> NSRect {
@@ -85,13 +119,8 @@ final class NotchController {
         if model.expanded {
             if hoverRect(expanded: true).contains(p) {
                 collapseWork?.cancel()
-            } else if collapseWork == nil || collapseWork?.isCancelled == true {
-                let work = DispatchWorkItem { [weak self] in
-                    self?.collapseWork = nil
-                    self?.setExpanded(false)
-                }
-                collapseWork = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+            } else if !holdOpen, collapseWork == nil || collapseWork?.isCancelled == true {
+                scheduleCollapse(after: 0.25)
             }
         } else if panel.isVisible, hoverRect(expanded: false).contains(p) {
             setExpanded(true)

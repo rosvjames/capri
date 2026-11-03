@@ -154,9 +154,16 @@ struct ExpandedPresenceView: View {
         let g = geometry, l = geometry.layout, crop = l.characterCrop
         let r = g.rect(crop.x, crop.y, crop.w, crop.h)
         ZStack(alignment: .topLeading) {
-            CapriFramePlayer(origin: model.expandedAt)
-                .frame(width: r.width, height: r.height)
-                .offset(x: r.minX, y: r.minY)
+            Group {
+                // Hablando: su boca sigue la voz. Si no, el loop aprobado.
+                if model.mode == .speaking {
+                    TalkingFacePlayer(level: model.speechLevel)
+                } else {
+                    CapriFramePlayer(origin: model.expandedAt)
+                }
+            }
+            .frame(width: r.width, height: r.height)
+            .offset(x: r.minX, y: r.minY)
 
             if let title = l.ui["title"], let dot = l.ui["dot"], let message = l.ui["message"], let button = l.ui["button"] {
                 text(title, size: FontPx.title, weight: .bold, kerning: 0.4)
@@ -165,7 +172,7 @@ struct ExpandedPresenceView: View {
                     .fill(permissions.allGranted ? Color(hexString: dot.color) : Theme.red)
                     .frame(width: (dot.size ?? 15) * g.s, height: (dot.size ?? 15) * g.s)
                     .offset(x: g.rect(dot.x, dot.y, 0, 0).minX, y: g.rect(dot.x, dot.y, 0, 0).minY)
-                if model.transcript.isEmpty {
+                if model.transcript.isEmpty || model.openedForSpeech {
                     text(message, size: FontPx.message, weight: .semibold)
                 } else {
                     transcript(at: message, upTo: button)
@@ -233,7 +240,8 @@ struct ExpandedPresenceView: View {
         let frame = g.rect(e.x, e.y, e.w ?? 0, e.h ?? 0)
         let green = Color(hexString: e.color)
         let ready = permissions.allGranted
-        let listening = model.mode == .listening
+        // Escuchando o hablando, el botón la detiene.
+        let listening = model.mode == .listening || model.mode == .speaking
         return Button {
             // Sin permisos, el botón los pide. Con ellos, pulsar empieza a escuchar y volver a pulsar termina.
             if ready { model.toggleTalk() } else { permissions.requestMissing() }
