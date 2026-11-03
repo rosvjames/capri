@@ -42,7 +42,9 @@ Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México
 5. ✅ **Responder en voz** (`Speaker.swift`): Paulina (es-MX), elegida escuchando las voces; se usa automáticamente su mejor calidad instalada; hoy, Paulina mejorada (Enhanced), descargada en Ajustes del Sistema → Accesibilidad → Contenido leído. En esta fase, eco: "Entendí: …" o "No te escuché.". Hablarle mientras responde la calla.
 6. ✅ **Estados del notch conectados al flujo real**: reposo → escuchando → procesando → respondiendo → reposo, con el notch cerrado. Siguiendo "voz primero" (`docs/CAPACIDADES.md`), el panel no se abre solo en esta fase: la respuesta es un eco y no hay nada que leer. La franja de texto pasa a la Fase 3.
 7. ✅ **C-10**: Esc la calla o cancela la escucha (macOS también entrega el Esc a la app de delante). En pantalla completa Capri se oculta y sigue respondiendo al ⌘ derecho (`FullscreenWatcher.swift`: tipo de escritorio activo, sin consultar en bucle). El modo silencio pasa a C-24: hoy Capri solo habla cuando se lo pides.
-8. ⬜ **Fotogramas para escuchar y hablar** (panel y notch cerrado), sustituyendo la cara chibi por capas. Va en paralelo con los pasos 1–7.
+8. 🟨 **Fotogramas para escuchar y hablar**, sustituyendo la cara chibi por capas.
+   - 🟨 Notch cerrado (chibi): calma, parpadeo, escucha, piensa y dos bocas para hablar. Al hablar, la boca cambia siguiendo las palabras de la voz.
+   - ⬜ Panel abierto: escuchando y hablando, como ediciones de los fotogramas v3.
 - Hito: mantienes ⌘ derecho, dices una frase, sueltas, y Capri la muestra y responde en voz "Entendí: …". En reposo sigue a 0 % de CPU.
 
 ## Fase 2b — Música en el notch (C-29)
