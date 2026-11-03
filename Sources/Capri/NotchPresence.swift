@@ -154,7 +154,7 @@ struct ExpandedPresenceView: View {
         let g = geometry, l = geometry.layout, crop = l.characterCrop
         let r = g.rect(crop.x, crop.y, crop.w, crop.h)
         ZStack(alignment: .topLeading) {
-            Group {
+            ZStack {
                 // Hablando: su boca sigue la voz. Si no, el loop aprobado.
                 if model.mode == .speaking {
                     TalkingFacePlayer(level: model.speechLevel)
@@ -181,6 +181,10 @@ struct ExpandedPresenceView: View {
             }
         }
         .frame(width: g.bodyWidth, height: g.height, alignment: .topLeading)
+        // Los cambios de estado (escuchar, hablar, reposo) son instantáneos dentro del panel, a saltos como el
+        // resto de la animación. Con la animación del notch, SwiftUI fundía las dos vistas de Capri y quedaban
+        // semitransparentes sobre el negro: se veía más apagada durante un instante.
+        .animation(nil, value: model.mode)
     }
 
     /// Lo que Capri entendió, en vivo, en el sitio del mensaje: hasta dos líneas mostrando el final de la frase.
