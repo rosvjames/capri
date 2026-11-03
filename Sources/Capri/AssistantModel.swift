@@ -59,8 +59,19 @@ final class AssistantModel: ObservableObject {
     }
     /// Cuándo se abrió el panel: el loop de Capri empieza desde aquí.
     @Published var expandedAt = Date()
+    /// Lo que Capri entendió (en vivo mientras escucha; se mantiene hasta cerrar el panel).
+    @Published var transcript = ""
+    /// El panel se abrió solo porque Capri habla: entonces no se muestra lo que dictaste ("voz primero").
+    @Published var openedForSpeech = false
+    /// Nivel del micrófono mientras escucha (0…1).
+    @Published var audioLevel: CGFloat = 0
+    /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
+    var toggleTalk: () -> Void = {}
+    /// Volumen (dB) de la voz de Capri que se está oyendo; lo conecta AppDelegate.
+    var speechLevel: () -> Float? = { nil }
     let metrics: NotchMetrics
     let geometry: ExpandedGeometry
+    let permissions = PermissionCenter()
 
     init(metrics: NotchMetrics) {
         self.metrics = metrics

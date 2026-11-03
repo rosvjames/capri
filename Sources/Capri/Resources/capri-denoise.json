@@ -1,0 +1,8 @@
+{
+  "name": "RNNoise beguiling-drafter (recording noise / voice)",
+  "source": "https://github.com/GregorR/rnnoise-models/tree/master/beguiling-drafter-2018-08-30",
+  "download": "https://raw.githubusercontent.com/GregorR/rnnoise-models/master/beguiling-drafter-2018-08-30/bd.rnnn",
+  "sha256": "ae3f7411e1e6a884f839a4a145c394408398f09854dbc1216ee02faafc98a17b",
+  "upstream_notice": "The upstream README states that model data is not subject to copyright; see https://github.com/GregorR/rnnoise-models#readme",
+  "runtime": "Local FFmpeg arnndn; input and output stay on this Mac."
+}

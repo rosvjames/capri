@@ -25,6 +25,9 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 ### Principio de diseño
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.
 
+### Voz primero
+Capri responde siempre en voz. Mientras escucha, el notch sigue cerrado con su versión chibi junto a la cámara. Cuando responde, el notch se despliega y se la ve hablándote de frente, moviendo la boca; al terminar se vuelve a cerrar. El notch no es un chat: no muestra historial ni repite tu frase. Solo muestra texto cuando oírlo no basta (comandos de terminal, código, enlaces, rutas, datos que vas a usar): una franja inferior con ese contenido y un botón para copiarlo. Lo que entendió solo se ve, discreto, si abres el panel tú.
+
 ### Capri es la protagonista del notch
 La información extra (música, uso de IA…) aparece cuando es relevante, por ejemplo al cambiar de canción, y después devuelve el panel a Capri. Va en la columna izquierda del panel o a los lados del notch cerrado, sin tocar el recorte de Capri. Si hace falta espacio, el panel se ensancha hacia la izquierda; sus fotogramas no cambian. La fecha y la hora no se muestran: la barra de menús ya tiene reloj.
 
@@ -34,7 +37,7 @@ La información extra (música, uso de IA…) aparece cuando es relevante, por e
 - C-21 Memoria de conversaciones y preferencias
 - C-22 Leer la ventana activa (captura de pantalla) como contexto de código
 - C-23 Recordatorios y temporizadores
-- C-24 Comentarios espontáneos / personalidad proactiva
+- C-24 Comentarios espontáneos / personalidad proactiva, con un modo silencio para desactivarlos
 - C-25 Presencia en el escritorio: aparecer fuera del notch, moverse e interactuar con la pantalla (D-7)
 - C-26 Narrar en el notch lo que hace Claude Code (hooks): acción actual, avisos de permiso, resumen al terminar
 - C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
@@ -50,11 +53,12 @@ Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.
 | # | Pregunta | Decisión |
 |---|---|---|
 | D-1 | ¿Qué LLM? | Claude API como principal, detrás de un protocolo para poder añadir Ollama (local) después |
-| D-2 | ¿Cómo se activa? | Atajo de teclado global (push-to-talk) en v1; palabra de activación en v2 (C-20). La tecla exacta se elige en la Fase 2 |
+| D-2 | ¿Cómo se activa? | **⌘ derecho mantenido** (push-to-talk): hablas mientras lo mantienes y al soltar Capri responde. También el botón Hablar del panel. Palabra de activación en v2 (C-20). Decidido 2026-11-02 |
 | D-3 | ¿Qué app de música? | Spotify |
 | D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) en v1 |
-| D-5 | ¿Voz de respuesta? | Voz del sistema en v1; voz con más carácter después (ElevenLabs Voice Design o TTS local tipo Kokoro) |
+| D-5 | ¿Voz de respuesta? | Voz del sistema en v1: **Paulina (es-MX)** en su mejor calidad instalada (hoy, la mejorada / Enhanced). Voz con más carácter después (ElevenLabs Voice Design o TTS local tipo Kokoro) |
 | D-6 | ¿Repositorio público? | Público, con aviso de fan project no comercial |
+| D-8 | ¿Qué español? | México / Latinoamérica: reconocimiento `es-MX` y voz del sistema `es_MX` (decidido 2026-11-02) |
 
 ### Abiertas
 

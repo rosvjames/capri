@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 // Renderizado a PNG sin permisos de grabación de pantalla, para verificar la interfaz:
-//   Capri --snapshot ruta.png [modo] [colapsado] [t=ms]
+//   Capri --snapshot ruta.png [modo] [colapsado] [sinpermisos] [t=ms]
 //       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
 //       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
@@ -10,12 +10,15 @@ import SwiftUI
 //   Capri --timing-check                           imprime los cambios de dibujo que programa el reproductor (2 loops)
 
 @MainActor
-func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0) {
+func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0, withoutPermissions: Bool = false) {
     let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     let model = AssistantModel(metrics: screen.map(NotchMetrics.of) ?? NotchMetrics(width: 185, height: 32))
     _ = NotchFrames.shared  // decodificar antes de fijar la hora, para que el instante capturado sea el pedido
     model.expanded = expanded
     model.mode = mode
+    model.permissions.overrideForPreview(Dictionary(uniqueKeysWithValues: Permission.allCases.map {
+        ($0, withoutPermissions ? PermissionState.notDetermined : .granted)
+    }))
     model.expandedAt = Date().addingTimeInterval(-elapsedMs / 1000)
     let size = model.windowSize
     let view = NotchView(model: model)

@@ -3,6 +3,8 @@ import SwiftUI
 struct WaveformView: View {
     let mode: AssistantMode
     var bars = 30
+    /// Nivel real del micrófono (0…1). Si existe, la onda lo sigue en lugar de simularlo.
+    var level: CGFloat? = nil
 
     var body: some View {
         // 24 fps, como la cara: a la frecuencia de la pantalla (hasta 120 Hz) costaba ~10 % de CPU.
@@ -16,7 +18,9 @@ struct WaveformView: View {
                     let amp: Double
                     switch mode {
                     case .idle: amp = 0.07 + 0.05 * sin(t * 2 + p * 6)
-                    case .listening: amp = 0.2 + 0.75 * abs(sin(t * 7 + p * 11) * sin(t * 3.1 + p * 5))
+                    case .listening:
+                        let shape = 0.55 + 0.45 * abs(sin(t * 7 + p * 11))
+                        amp = level.map { 0.12 + 0.85 * Double($0) * shape } ?? 0.2 + 0.75 * abs(sin(t * 7 + p * 11) * sin(t * 3.1 + p * 5))
                     case .thinking:
                         let d = abs((t * 1.2).truncatingRemainder(dividingBy: 1) - p)
                         amp = 0.08 + 0.9 * max(0, 1 - d * 6)

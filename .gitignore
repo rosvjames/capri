@@ -17,3 +17,6 @@ art/referencias/*
 # Secretos
 .env
 *.p8
+
+# App empaquetada
+build/
