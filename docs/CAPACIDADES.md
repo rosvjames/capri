@@ -20,7 +20,7 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-08 | Abrir sitios | "Abre YouTube" | Local; abre la URL en el navegador por defecto |
 | C-09 | Música (Spotify) | "Pon tal canción", "pausa", "¿qué suena?" | AppleScript sobre Spotify |
 | C-10 | Interrumpir y silenciar | Esc la calla o cancela; modo silencio; se oculta en pantalla completa | Local |
-| C-29 | Música en el notch | Notch cerrado: carátula a un lado y barras al otro mientras suena algo. Panel: canción, artista y controles | Avisos de Spotify al cambiar de canción (sin consultar en bucle: 0 % de CPU en reposo) + AppleScript para los controles |
+| C-29 | Música en el notch | Notch cerrado: carátula a un lado y barras al otro mientras suena algo. Panel: carátula, canción, artista y controles en el sitio de la interfaz de Capri, sin cambiar el tamaño del panel | Avisos de Spotify al cambiar de canción (sin consultar en bucle: 0 % de CPU en reposo) + AppleScript para los controles |
 
 ### Principio de diseño
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.
