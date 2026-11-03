@@ -24,22 +24,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 notch?.model.mode = notch?.model.mode.next ?? .idle
             }
         }
+        // CAPRI_DECIR="texto" la hace hablar al arrancar, para probar la voz sin micrófono.
+        if let text = ProcessInfo.processInfo.environment["CAPRI_DECIR"] {
+            speaker.speak(text)
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        speaker.shutdown()
     }
 
     /// ⌘ derecho mantenido (o el botón Hablar) → escuchar, transcribir y responder en voz.
-    /// En la Fase 2 la respuesta es un eco de lo entendido; la IA llega en la Fase 3.
+    /// El demo devuelve un saludo fijo para «hola Capri» y eco para el resto; aún no usa IA.
     private func installPushToTalk(_ notch: NotchController) {
         let model = notch.model, listener = listener, speaker = speaker
+        speaker.onPreparing = { model.mode = .thinking }
         speaker.onStart = {
             TalkingFace.shared.reset()
             model.mode = .speaking
             notch.showWhileSpeaking()
         }
         speaker.onFinish = {
-            guard model.mode == .speaking else { return }
+            guard model.mode == .speaking || model.mode == .thinking else { return }
             model.mode = .idle
             model.expandedAt = Date()  // el loop vuelve a empezar desde la pose en la que habló
             notch.speechEnded()
+        }
+        speaker.onError = { message in
+            model.transcript = message
+            model.mode = .idle
+            notch.setExpanded(true)
         }
         model.speechLevel = { speaker.level() }
         listener.onPartial = { model.transcript = $0 }
@@ -47,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         listener.onFinal = { text in
             model.transcript = text
             model.mode = .idle
-            speaker.speak(text.isEmpty ? "No te escuché." : "Entendí: \(text)")
+            speaker.speak(DemoReply.response(to: text))
         }
         listener.onError = { message in
             model.transcript = message
@@ -56,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let begin = {
             guard model.permissions.allGranted else { return model.permissions.requestMissing() }
             speaker.stop()  // si estaba hablando, se calla para escucharte
+            speaker.prepare()
             model.transcript = ""
             model.mode = .listening
             listener.start()
@@ -81,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.mode = .idle
         }
         model.toggleTalk = {
-            if speaker.isSpeaking { return speaker.stop() }
+            if speaker.isBusy { return speaker.stop() }
             listener.isListening ? end() : begin()
         }
         // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
@@ -123,6 +138,8 @@ if let i = args.firstIndex(of: "--gallery"), args.count > i + 1 {
     exit(0)
 }
 
+// Si el proceso de voz muere, escribirle debe dar un error (LocalQwen lo maneja), no cerrar Capri.
+signal(SIGPIPE, SIG_IGN)
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

@@ -1,19 +1,22 @@
 import AVFoundation
 import os
 
-/// Voz de Capri: Paulina (es-MX) en la mejor calidad instalada (Premium > mejorada > estándar), D-5 y D-8.
-/// La voz se elige en cada frase, así que al descargar una versión mejor se usa sin reiniciar.
+/// Demo con Qwen local y la referencia 2 elegida. CAPRI_TTS=paulina permite comparar con la voz anterior.
 ///
-/// El audio no lo reproduce el sintetizador: se recibe en bloques (`write`), se reproduce con un
-/// `AVAudioPlayerNode` propio y se mide su volumen cada 20 ms. Así la boca de Capri puede seguir
-/// exactamente lo que se está oyendo (`level(at:)`).
+/// Qwen entrega un WAV; Paulina entrega bloques (`write`). Ambos pasan por el mismo
+/// `AVAudioPlayerNode` y su volumen se mide cada 20 ms para sincronizar la boca (`level()`).
 final class Speaker {
     var onStart: () -> Void = {}
     var onFinish: () -> Void = {}
+    var onPreparing: () -> Void = {}
+    var onError: (String) -> Void = { _ in }
 
     private let synthesizer = AVSpeechSynthesizer()
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
+    private let qwen = LocalQwen()
+    private var engineStopWork: DispatchWorkItem?
+    private let usePaulina = ProcessInfo.processInfo.environment["CAPRI_TTS"] == "paulina"
     private var connectedFormat: AVAudioFormat?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "voz")
 
@@ -28,6 +31,8 @@ final class Speaker {
     private var pendingBuffers = 0
     private var generationDone = false
     private(set) var isSpeaking = false
+    private(set) var isPreparing = false
+    var isBusy: Bool { isSpeaking || isPreparing }
 
     init() {
         engine.attach(player)
@@ -41,6 +46,33 @@ final class Speaker {
         carry = []
         pendingBuffers = 0
         generationDone = false
+        isPreparing = true
+        onPreparing()
+
+        // El saludo del demo usa una toma concreta para mantener el registro elegido,
+        // sin volver a variar la interpretación ni alterar las otras respuestas.
+        if !usePaulina, text == DemoReply.greeting,
+           let url = Bundle.module.url(forResource: "capri-qwen-greeting", withExtension: "wav") {
+            DispatchQueue.main.async { [weak self] in self?.playFile(url, id: id) }
+            return
+        }
+
+        if !usePaulina {
+            qwen.generate(text) { [weak self] result in
+                guard let self else { return }
+                guard id == self.utteranceID else {
+                    if case .success(let url) = result { try? FileManager.default.removeItem(at: url) }
+                    return
+                }
+                switch result {
+                case .success(let url):
+                    defer { try? FileManager.default.removeItem(at: url) }
+                    self.playFile(url, id: id)
+                case .failure(let error): self.failed(error)
+                }
+            }
+            return
+        }
 
         let utterance = AVSpeechUtterance(string: text)
         let voice = Self.bestVoice()
@@ -55,15 +87,62 @@ final class Speaker {
         }
     }
 
+    /// Se llama al empezar a escuchar: el modelo carga mientras hablas y la respuesta solo espera la generación.
+    func prepare() {
+        if !usePaulina { qwen.warmUp() }
+    }
+
+    private func playFile(_ url: URL, id: Int) {
+        guard id == utteranceID else { return }
+        do {
+            let file = try AVAudioFile(forReading: url)
+            guard file.length > 0,
+                  let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))
+            else { throw NSError(domain: "Capri.Qwen", code: 3) }
+            try file.read(into: buffer)
+            log.notice("reproduciendo la voz Qwen elegida")
+            receive(buffer, id: id)
+            receive(nil, id: id)
+        } catch { failed(error) }
+    }
+
     func stop() {
         utteranceID += 1
         synthesizer.stopSpeaking(at: .immediate)
         player.stop()
-        engine.stop()  // un motor de audio encendido sin sonar gasta CPU: se apaga entre frases
-        let wasSpeaking = isSpeaking
+        scheduleEngineStop()
+        qwen.cancel()
+        let wasSpeaking = isBusy
         isSpeaking = false
+        isPreparing = false
         envelope = []
+        carry = []
         if wasSpeaking { onFinish() }
+    }
+
+    /// Un motor encendido sin sonar gasta ~0,3 % de CPU, así que se apaga; pero no al terminar cada frase:
+    /// esperar unos segundos evita el clic de apagar y encender la salida entre frases seguidas.
+    private func scheduleEngineStop() {
+        engineStopWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, !self.isSpeaking else { return }
+            self.engine.stop()
+        }
+        engineStopWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
+    }
+
+    func shutdown() {
+        stop()
+        engineStopWork?.cancel()
+        engine.stop()
+        qwen.shutdown()
+    }
+
+    private func failed(_ error: Error) {
+        log.error("no se pudo generar la voz: \(error.localizedDescription, privacy: .public)")
+        stop()
+        onError("No pude reproducir la voz. Inténtalo de nuevo.")
     }
 
     /// Volumen (dB) de lo que se está oyendo ahora mismo, o nil si no suena nada.
@@ -75,6 +154,7 @@ final class Speaker {
         else { return nil }
         let latency = engine.outputNode.presentationLatency
         let heard = Double(playerTime.sampleTime) / playerTime.sampleRate - latency
+        guard heard >= 0 else { return nil }
         let index = Int(heard / Self.window)
         guard index >= 0, index < envelope.count else { return nil }
         return envelope[index]
@@ -104,13 +184,16 @@ final class Speaker {
             }
         }
         if !isSpeaking {
+            engineStopWork?.cancel()
             do {
                 if !engine.isRunning { try engine.start() }
                 player.play()
                 isSpeaking = true
+                isPreparing = false
                 onStart()
             } catch {
                 log.error("no se pudo reproducir la voz: \(error.localizedDescription, privacy: .public)")
+                failed(error)
             }
         }
     }
@@ -118,8 +201,9 @@ final class Speaker {
     private func finishIfDone(id: Int) {
         guard id == utteranceID, generationDone, pendingBuffers == 0 else { return }
         isSpeaking = false
+        isPreparing = false
         player.stop()
-        engine.stop()
+        scheduleEngineStop()
         onFinish()
     }
 
