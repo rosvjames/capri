@@ -13,11 +13,12 @@ struct NowPlaying: Equatable {
 /// Sigue la canción de Spotify por el aviso distribuido que publica en cada cambio de canción o de estado (C-29).
 ///
 /// No consulta en bucle (0 % de CPU en reposo) y no necesita permisos: el aviso le llega a cualquier app.
-/// Lo que el aviso no trae (la carátula) y los controles irán por AppleScript, que sí pide permiso.
-/// Si Spotify ya sonaba al abrir Capri, no se sabe nada hasta el siguiente cambio.
+/// Lo que el aviso no trae va por AppleScript (`SpotifyRemote`), cuyo permiso se pide la primera vez que
+/// suena algo. Con el permiso concedido, al abrir Capri se lee lo que ya sonaba.
 final class MusicWatcher: NSObject {
     var onChange: (NowPlaying?) -> Void = { _ in }
     private(set) var current: NowPlaying?
+    let spotify = SpotifyRemote()
 
     static let spotifyID = "com.spotify.client"
     private var quitObserver: NSObjectProtocol?
@@ -37,6 +38,11 @@ final class MusicWatcher: NSObject {
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             if app?.bundleIdentifier == Self.spotifyID { self?.update(nil) }
         }
+        // Sin preguntar: el aviso del permiso no debe salir al arrancar.
+        spotify.readNowPlaying(ask: false) { [weak self] value in
+            guard let self, self.current == nil, let value else { return }
+            self.update(value)
+        }
     }
 
     deinit {
@@ -50,6 +56,7 @@ final class MusicWatcher: NSObject {
         guard state == "Playing" || state == "Paused", let id = info["Track ID"] as? String else { return update(nil) }
         update(NowPlaying(trackID: id, title: info["Name"] as? String ?? "", artist: info["Artist"] as? String ?? "",
                           album: info["Album"] as? String ?? "", isPlaying: state == "Playing"))
+        spotify.requestPermission()
     }
 
     private func update(_ value: NowPlaying?) {

@@ -2,13 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIdentifier</key>
-	<string>com.rosvjames.capri</string>
-	<key>CFBundleName</key>
-	<string>Capri</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
 	<key>CFBundleDisplayName</key>
 	<string>Capri</string>
 	<key>CFBundleExecutable</key>
+	<string>Capri</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.rosvjames.capri</string>
+	<key>CFBundleName</key>
 	<string>Capri</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
@@ -16,12 +18,12 @@
 	<string>0.2.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>es</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Capri le pide a Spotify la carátula de la canción y usa sus controles (anterior, pausa, siguiente).</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
