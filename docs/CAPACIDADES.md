@@ -26,7 +26,7 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.
 
 ### Voz primero
-Capri responde siempre en voz. El notch no es un chat: no muestra historial ni repite tu frase. Solo muestra texto cuando oírlo no basta (comandos de terminal, código, enlaces, rutas, datos que vas a usar): al terminar de hablar se abre una franja inferior con ese contenido y un botón para copiarlo, y se cierra sola. Para "abre Safari" o "¿qué hora es?" basta con la voz y el panel no se abre. Lo que entendió solo se ve, discreto, si abres el panel tú.
+Capri responde siempre en voz. Mientras escucha, el notch sigue cerrado con su versión chibi junto a la cámara. Cuando responde, el notch se despliega y se la ve hablándote de frente, moviendo la boca; al terminar se vuelve a cerrar. El notch no es un chat: no muestra historial ni repite tu frase. Solo muestra texto cuando oírlo no basta (comandos de terminal, código, enlaces, rutas, datos que vas a usar): una franja inferior con ese contenido y un botón para copiarlo. Lo que entendió solo se ve, discreto, si abres el panel tú.
 
 ### Capri es la protagonista del notch
 La información extra (música, uso de IA…) aparece cuando es relevante, por ejemplo al cambiar de canción, y después devuelve el panel a Capri. Va en la columna izquierda del panel o a los lados del notch cerrado, sin tocar el recorte de Capri. Si hace falta espacio, el panel se ensancha hacia la izquierda; sus fotogramas no cambian. La fecha y la hora no se muestran: la barra de menús ya tiene reloj.
