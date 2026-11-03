@@ -3,7 +3,7 @@
 Fases en orden. Cada fase termina con algo que se puede probar y con su estado actualizado aquí.
 Estados: ⬜ pendiente · 🟨 en curso · ✅ hecha
 
-## Fase 0 — Base del proyecto 🟨
+## Fase 0 — Base del proyecto ✅
 - ✅ Paquete Swift que compila sin Xcode (`swift build`)
 - ✅ Prototipo visual del notch con estados simulados (C-02, provisional)
 - ✅ Documentación: capacidades, roadmap, estética, convenciones
@@ -11,8 +11,8 @@ Estados: ⬜ pendiente · 🟨 en curso · ✅ hecha
 - ✅ Cerrar decisiones D-1 a D-6 (`docs/CAPACIDADES.md`)
 - ✅ Análisis de otros proyectos de Capri (`docs/REFERENCIAS.md`)
 
-## Fase 1 — Identidad visual 🟨
-Rama: `fase-1/identidad-visual`.
+## Fase 1 — Identidad visual ✅ (`v0.1.0`)
+Rama: `fase-1/identidad-visual`, fusionada en `main`.
 - ✅ Estilo decidido: anime (maestra) + chibi (derivada)
 - ✅ Capturas de referencia (A-000); rasgos y paleta confirmados
 - ✅ Hoja de personaje de Capri (A-001, referencia maestra)
@@ -23,18 +23,19 @@ Rama: `fase-1/identidad-visual`.
 - ✅ Ojos y bocas vectoriales en SwiftUI, replicando las 9 expresiones de A-002 (`CapriFace.swift`)
 - ✅ Integrar Capri chibi en el notch y reemplazar el núcleo placeholder
 - ✅ Paleta de interfaz de Capri (sin cian)
-- ⬜ Tipografía de interfaz
-- ⬜ Icono de la barra de menús por código (máscara y ojos)
+- ✅ Tipografía de interfaz: fuente del sistema, calibrada contra la maqueta
+- ✅ Icono de la barra de menús por código: máscara, ojos de anillo y puntas de melena (`MenuBarIcon.swift`)
 - ✅ Panel abierto con el prototipo aprobado v3: fotogramas completos con sus duraciones e interfaz nativa (`NotchPresence.swift`, `art/final/notch-fiel-v3/`)
 - ~~Base anime sin rasgos (A-005)~~: sustituida por los fotogramas completos
-- ⬜ Notch cerrado con el enfoque de fotogramas (hoy usa la cara chibi por capas)
-- Hito: el notch muestra a Capri cambiando de expresión según el estado
+- ➡️ Notch cerrado con fotogramas: pasa a la Fase 2, donde existen sus estados
+- ✅ Hito: el notch muestra a Capri (loop aprobado al abrirlo; cara chibi según el estado al estar cerrado y activo), con 0 % de CPU en reposo
 
 ## Fase 2 — Bucle de voz (C-01)
 - ⬜ Atajo de teclado global para hablar (push-to-talk)
 - ⬜ Reconocimiento de voz en español (permisos de micrófono y voz)
 - ⬜ Respuesta hablada (TTS)
 - ⬜ Estados del notch conectados al flujo real
+- ⬜ Notch cerrado con fotogramas para escuchar y hablar (sustituye la cara chibi por capas)
 - ⬜ Esc para callarla, modo silencio, ocultarse en pantalla completa (C-10)
 - Hito: le hablas y repite lo que entendió, en voz
 
@@ -62,6 +63,7 @@ Justo después de la voz: da vida al notch sin depender de la IA.
 ## Fase 5 — Producto
 - ⬜ Empaquetar como `.app` con icono, que se inicie con la sesión
 - ⬜ Ajustes (API key en Llavero, atajo, voz)
+- ⬜ Abrir ajustes y salir desde el panel: si la barra de menús está llena, macOS esconde el icono de Capri detrás del notch
 - ⬜ README con GIF/video de demo, diagrama de arquitectura
 - ⬜ Release v1.0
 
