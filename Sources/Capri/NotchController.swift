@@ -41,10 +41,13 @@ final class NotchController {
         panel.orderFrontRegardless()
 
         // En pantalla completa (vídeo, juego, presentación) Capri desaparece; sigue escuchando el ⌘ derecho.
-        let watcher = FullscreenWatcher(screen: screen)
-        watcher.onChange = { [weak self] isFullscreen in self?.setHidden(isFullscreen) }
-        fullscreen = watcher
-        if watcher.isFullscreen { setHidden(true) }
+        // Con CAPRI_ESTADO se queda visible: oculta no dibuja nada y la medición de CPU saldría en 0 %.
+        if !fixedState {
+            let watcher = FullscreenWatcher(screen: screen)
+            watcher.onChange = { [weak self] isFullscreen in self?.setHidden(isFullscreen) }
+            fullscreen = watcher
+            if watcher.isFullscreen { setHidden(true) }
+        }
 
         // CAPRI_ESTADO fija un estado e ignora el ratón, para medir rendimiento sin interferencias.
         if let fixed = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] {
