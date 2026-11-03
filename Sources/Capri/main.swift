@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var demoTimer: Timer?
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
+    let speaker = Speaker()
     private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -24,14 +25,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// ⌘ derecho mantenido (o el botón Hablar) → escuchar y transcribir. Responder llega en el paso 5.
+    /// ⌘ derecho mantenido (o el botón Hablar) → escuchar, transcribir y responder en voz.
+    /// En la Fase 2 la respuesta es un eco de lo entendido; la IA llega en la Fase 3.
     private func installPushToTalk(_ notch: NotchController) {
-        let model = notch.model, listener = listener
+        let model = notch.model, listener = listener, speaker = speaker
+        speaker.onStart = { model.mode = .speaking }
+        speaker.onFinish = { if model.mode == .speaking { model.mode = .idle } }
         listener.onPartial = { model.transcript = $0 }
         listener.onLevel = { model.audioLevel = $0 }
         listener.onFinal = { text in
             model.transcript = text
             model.mode = .idle
+            speaker.speak(text.isEmpty ? "No te escuché." : "Entendí: \(text)")
         }
         listener.onError = { message in
             model.transcript = message
@@ -39,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let begin = {
             guard model.permissions.allGranted else { return model.permissions.requestMissing() }
+            speaker.stop()  // si estaba hablando, se calla para escucharte
             model.transcript = ""
             model.mode = .listening
             listener.start()
