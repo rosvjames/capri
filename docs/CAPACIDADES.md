@@ -50,11 +50,12 @@ Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.
 | # | Pregunta | Decisión |
 |---|---|---|
 | D-1 | ¿Qué LLM? | Claude API como principal, detrás de un protocolo para poder añadir Ollama (local) después |
-| D-2 | ¿Cómo se activa? | Atajo de teclado global (push-to-talk) en v1; palabra de activación en v2 (C-20). La tecla exacta se elige en la Fase 2 |
+| D-2 | ¿Cómo se activa? | **⌘ derecho mantenido** (push-to-talk): hablas mientras lo mantienes y al soltar Capri responde. También el botón Hablar del panel. Palabra de activación en v2 (C-20). Decidido 2026-11-02 |
 | D-3 | ¿Qué app de música? | Spotify |
 | D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) en v1 |
 | D-5 | ¿Voz de respuesta? | Voz del sistema en v1; voz con más carácter después (ElevenLabs Voice Design o TTS local tipo Kokoro) |
 | D-6 | ¿Repositorio público? | Público, con aviso de fan project no comercial |
+| D-8 | ¿Qué español? | México / Latinoamérica: reconocimiento `es-MX` y voz del sistema `es_MX` (decidido 2026-11-02) |
 
 ### Abiertas
 

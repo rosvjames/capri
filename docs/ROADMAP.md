@@ -30,14 +30,19 @@ Rama: `fase-1/identidad-visual`, fusionada en `main`.
 - ➡️ Notch cerrado con fotogramas: pasa a la Fase 2, donde existen sus estados
 - ✅ Hito: el notch muestra a Capri (loop aprobado al abrirlo; cara chibi según el estado al estar cerrado y activo), con 0 % de CPU en reposo
 
-## Fase 2 — Bucle de voz (C-01)
-- ⬜ Atajo de teclado global para hablar (push-to-talk)
-- ⬜ Reconocimiento de voz en español (permisos de micrófono y voz)
-- ⬜ Respuesta hablada (TTS)
-- ⬜ Estados del notch conectados al flujo real
-- ⬜ Notch cerrado con fotogramas para escuchar y hablar (sustituye la cara chibi por capas)
-- ⬜ Esc para callarla, modo silencio, ocultarse en pantalla completa (C-10)
-- Hito: le hablas y repite lo que entendió, en voz
+## Fase 2 — Bucle de voz (C-01) 🟨
+Rama: `fase-2/voz`. Decisiones: ⌘ derecho mantenido (D-2), español de México (D-8), voz del sistema (D-5).
+
+1. ⬜ **App empaquetada** (`Capri.app`, script en `tools/`): macOS solo concede micrófono, reconocimiento de voz y accesibilidad a una app con `Info.plist` y firma. Lanzada como binario suelto, los permisos se atribuirían a la terminal.
+   - Firma estable con un certificado propio de desarrollo, para no tener que volver a dar permisos tras cada compilación (la firma ad-hoc cambia en cada build).
+2. ⬜ **Permisos**: pedir micrófono, reconocimiento de voz y accesibilidad cuando hagan falta; si falta uno, el panel lo dice y abre el ajuste correcto del sistema.
+3. ⬜ **Atajo ⌘ derecho**: mantenerlo ~0,25 s solo, sin otra tecla, empieza a escuchar; soltarlo termina. Si se usa como modificador (⌘C con el ⌘ derecho) no se activa. Requiere el permiso de accesibilidad.
+4. ⬜ **Escuchar**: micrófono + reconocimiento `es-MX` en el dispositivo cuando esté disponible, con la transcripción en vivo en el notch y el nivel del micrófono para animar la onda.
+5. ⬜ **Responder en voz**: voz del sistema `es_MX` (se elige escuchando las disponibles); en esta fase, eco: "Entendí: …".
+6. ⬜ **Estados del notch conectados al flujo real**: reposo → escuchando → respondiendo → reposo. Al hablar con el notch cerrado, el panel se abre para mostrar la transcripción y la respuesta, y se cierra solo al terminar.
+7. ⬜ **C-10**: Esc la calla o cancela; ocultarse en pantalla completa; modo silencio.
+8. ⬜ **Fotogramas para escuchar y hablar** (panel y notch cerrado), sustituyendo la cara chibi por capas. Va en paralelo con los pasos 1–7.
+- Hito: mantienes ⌘ derecho, dices una frase, sueltas, y Capri la muestra y responde en voz "Entendí: …". En reposo sigue a 0 % de CPU.
 
 ## Fase 2b — Música en el notch (C-29)
 Justo después de la voz: da vida al notch sin depender de la IA.
