@@ -1,14 +1,18 @@
 import AppKit
+import Combine
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var notch: NotchController?
     var statusItem: NSStatusItem?
     var demoTimer: Timer?
+    let pushToTalk = PushToTalk()
+    private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let notch = NotchController()
         self.notch = notch
         installStatusItem()
+        installPushToTalk(notch)
 
         // Modo demostración: CAPRI_DEMO=1 abre el notch y cicla los estados.
         if ProcessInfo.processInfo.environment["CAPRI_DEMO"] == "1" {
@@ -17,6 +21,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 notch?.model.mode = notch?.model.mode.next ?? .idle
             }
         }
+    }
+
+    /// ⌘ derecho mantenido → escuchar. En este paso solo cambia el estado del notch; escuchar de verdad llega en el paso 4.
+    private func installPushToTalk(_ notch: NotchController) {
+        let model = notch.model
+        pushToTalk.onStart = { model.mode = .listening }
+        pushToTalk.onEnd = { model.mode = .idle }
+        pushToTalk.onCancel = { model.mode = .idle }
+        // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
+        accessibilityWatch = model.permissions.$states
+            .map { $0[.accessibility] == .granted }
+            .removeDuplicates()
+            .sink { [pushToTalk] granted in granted ? pushToTalk.start() : pushToTalk.stop() }
     }
 
     private func installStatusItem() {
