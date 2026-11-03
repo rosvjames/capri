@@ -37,7 +37,7 @@ La información extra (música, uso de IA…) aparece cuando es relevante, por e
 - C-21 Memoria de conversaciones y preferencias
 - C-22 Leer la ventana activa (captura de pantalla) como contexto de código
 - C-23 Recordatorios y temporizadores
-- C-24 Comentarios espontáneos / personalidad proactiva
+- C-24 Comentarios espontáneos / personalidad proactiva, con un modo silencio para desactivarlos
 - C-25 Presencia en el escritorio: aparecer fuera del notch, moverse e interactuar con la pantalla (D-7)
 - C-26 Narrar en el notch lo que hace Claude Code (hooks): acción actual, avisos de permiso, resumen al terminar
 - C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
