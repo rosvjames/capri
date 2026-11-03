@@ -66,7 +66,7 @@ struct NotchView: View {
                         .frame(width: m.height + 4, height: m.height + 4)
                         .padding(.leading, top + 4)
                     Spacer()
-                    WaveformView(mode: model.mode, bars: 4)
+                    WaveformView(mode: model.mode, bars: 4, level: model.mode == .listening ? model.audioLevel : nil)
                         .frame(width: 22, height: 12)
                         .padding(.trailing, top + 12)
                 }
@@ -82,7 +82,7 @@ struct NotchView: View {
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
         Group {
             if model.expanded {
-                ExpandedPresenceView(geometry: model.geometry, origin: model.expandedAt, permissions: model.permissions)
+                ExpandedPresenceView(model: model, permissions: model.permissions)
                     .padding(.leading, top)
             }
         }

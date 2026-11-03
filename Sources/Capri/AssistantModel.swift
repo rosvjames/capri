@@ -59,6 +59,12 @@ final class AssistantModel: ObservableObject {
     }
     /// Cuándo se abrió el panel: el loop de Capri empieza desde aquí.
     @Published var expandedAt = Date()
+    /// Lo que Capri entendió (en vivo mientras escucha; se mantiene hasta cerrar el panel).
+    @Published var transcript = ""
+    /// Nivel del micrófono mientras escucha (0…1).
+    @Published var audioLevel: CGFloat = 0
+    /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
+    var toggleTalk: () -> Void = {}
     let metrics: NotchMetrics
     let geometry: ExpandedGeometry
     let permissions = PermissionCenter()

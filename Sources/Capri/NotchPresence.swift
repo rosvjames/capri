@@ -136,9 +136,10 @@ struct CapriFramePlayer: View {
 
 /// Contenido del panel expandido: Capri + interfaz nativa, colocados en coordenadas de la maqueta.
 struct ExpandedPresenceView: View {
-    let geometry: ExpandedGeometry
-    let origin: Date
+    @ObservedObject var model: AssistantModel
     @ObservedObject var permissions: PermissionCenter
+
+    private var geometry: ExpandedGeometry { model.geometry }
 
     // Tamaños de letra calibrados contra la maqueta (px de maqueta; ver tools/preparar_notch_v3.py).
     private enum FontPx {
@@ -146,13 +147,14 @@ struct ExpandedPresenceView: View {
         static let message: CGFloat = 23.33    // semibold 13 pt
         static let button: CGFloat = 18.84     // semibold 10,5 pt
         static let icon: CGFloat = 25
+        static let transcript: CGFloat = 19.75 // semibold 11 pt: la frase cabe en dos líneas
     }
 
     var body: some View {
         let g = geometry, l = geometry.layout, crop = l.characterCrop
         let r = g.rect(crop.x, crop.y, crop.w, crop.h)
         ZStack(alignment: .topLeading) {
-            CapriFramePlayer(origin: origin)
+            CapriFramePlayer(origin: model.expandedAt)
                 .frame(width: r.width, height: r.height)
                 .offset(x: r.minX, y: r.minY)
 
@@ -163,12 +165,55 @@ struct ExpandedPresenceView: View {
                     .fill(permissions.allGranted ? Color(hexString: dot.color) : Theme.red)
                     .frame(width: (dot.size ?? 15) * g.s, height: (dot.size ?? 15) * g.s)
                     .offset(x: g.rect(dot.x, dot.y, 0, 0).minX, y: g.rect(dot.x, dot.y, 0, 0).minY)
-                text(message, size: FontPx.message, weight: .semibold)
+                if model.transcript.isEmpty {
+                    text(message, size: FontPx.message, weight: .semibold)
+                } else {
+                    transcript(at: message, upTo: button)
+                }
                 talkButton(button)
             }
         }
         .frame(width: g.bodyWidth, height: g.height, alignment: .topLeading)
     }
+
+    /// Lo que Capri entendió, en vivo, en el sitio del mensaje: hasta dos líneas mostrando el final de la frase.
+    private func transcript(at e: NotchV3Layout.Element, upTo button: NotchV3Layout.Element) -> some View {
+        let g = geometry
+        let font = NSFont.systemFont(ofSize: FontPx.transcript * g.s, weight: .semibold)
+        let x = (e.x - g.layout.panel.x) * g.s
+        let width = (g.layout.characterCrop.x + 25 - e.x) * g.s   // hasta donde empieza Capri
+        // Dos líneas que terminan justo encima del botón.
+        let bottom = (button.y - 5) * g.s
+        let height = Self.twoLineHeight(font)
+        return Text(Self.tail(of: model.transcript, font: font, width: width, height: height))
+            .font(Font(font))
+            .foregroundStyle(.white.opacity(model.mode == .listening ? 1 : 0.85))
+            .lineLimit(2)
+            .frame(width: width, height: height, alignment: .bottomLeading)
+            .offset(x: x, y: bottom - height)
+    }
+
+    /// Final de la frase que cabe en el recuadro, con "…" delante si se recortó.
+    /// (SwiftUI solo recorta por el principio en textos de una línea.)
+    static func tail(of text: String, font: NSFont, width: CGFloat, height: CGFloat) -> String {
+        func fits(_ s: String) -> Bool { measure(s, font: font, width: width) <= height + 0.5 }
+        guard !fits(text) else { return text }
+        var words = text.split(separator: " ")
+        while words.count > 1 {
+            words.removeFirst()
+            let candidate = "…" + words.joined(separator: " ")
+            if fits(candidate) { return candidate }
+        }
+        return "…" + (words.first.map(String.init) ?? "")
+    }
+
+    private static func measure(_ s: String, font: NSFont, width: CGFloat) -> CGFloat {
+        ceil((s as NSString).boundingRect(with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                                          options: [.usesLineFragmentOrigin], attributes: [.font: font]).height)
+    }
+
+    /// Alto de dos líneas medido igual que el texto, para que el recorte y el recuadro coincidan.
+    static func twoLineHeight(_ font: NSFont) -> CGFloat { measure("Ág\nÁg", font: font, width: 1000) }
 
     /// Texto colocado por su línea base: arriba de las mayúsculas en `e.y`, como en la maqueta.
     private func text(_ e: NotchV3Layout.Element, size px: CGFloat, weight: NSFont.Weight, kerning: CGFloat = 0) -> some View {
@@ -188,14 +233,15 @@ struct ExpandedPresenceView: View {
         let frame = g.rect(e.x, e.y, e.w ?? 0, e.h ?? 0)
         let green = Color(hexString: e.color)
         let ready = permissions.allGranted
+        let listening = model.mode == .listening
         return Button {
-            // Sin permisos, el botón los pide. Con ellos, hablar llega en el paso 4 de la Fase 2.
-            if !ready { permissions.requestMissing() }
+            // Sin permisos, el botón los pide. Con ellos, pulsar empieza a escuchar y volver a pulsar termina.
+            if ready { model.toggleTalk() } else { permissions.requestMissing() }
         } label: {
             HStack(spacing: 11 * g.s) {
-                Image(systemName: ready ? "mic" : "lock.open")
+                Image(systemName: !ready ? "lock.open" : listening ? "stop.fill" : "mic")
                     .font(.system(size: FontPx.icon * g.s, weight: .medium))
-                Text(ready ? (e.text ?? "") : "Permisos")
+                Text(!ready ? "Permisos" : listening ? "Detener" : (e.text ?? ""))
                     .font(.system(size: FontPx.button * g.s, weight: .semibold))
             }
             .foregroundStyle(green)
@@ -204,7 +250,7 @@ struct ExpandedPresenceView: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(ready ? "Disponible cuando Capri tenga voz"
+        .help(ready ? "También puedes mantener el ⌘ derecho"
                     : "Capri necesita: " + permissions.missing.map(\.title).joined(separator: ", "))
         .offset(x: frame.minX, y: frame.minY)
     }

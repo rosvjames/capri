@@ -53,7 +53,7 @@ final class NotchController {
         model.expanded = value
         panel.ignoresMouseEvents = !value
         // Pudo cambiar los permisos en Ajustes del Sistema mientras el panel estaba cerrado.
-        if value { model.permissions.refresh() }
+        if value { model.permissions.refresh() } else if model.mode == .idle { model.transcript = "" }
     }
 
     private func hoverRect(expanded: Bool) -> NSRect {

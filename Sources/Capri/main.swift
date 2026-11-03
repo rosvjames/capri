@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     var demoTimer: Timer?
     let pushToTalk = PushToTalk()
+    let listener = SpeechListener()
     private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -23,12 +24,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// ⌘ derecho mantenido → escuchar. En este paso solo cambia el estado del notch; escuchar de verdad llega en el paso 4.
+    /// ⌘ derecho mantenido (o el botón Hablar) → escuchar y transcribir. Responder llega en el paso 5.
     private func installPushToTalk(_ notch: NotchController) {
-        let model = notch.model
-        pushToTalk.onStart = { model.mode = .listening }
-        pushToTalk.onEnd = { model.mode = .idle }
-        pushToTalk.onCancel = { model.mode = .idle }
+        let model = notch.model, listener = listener
+        listener.onPartial = { model.transcript = $0 }
+        listener.onLevel = { model.audioLevel = $0 }
+        listener.onFinal = { text in
+            model.transcript = text
+            model.mode = .idle
+        }
+        listener.onError = { message in
+            model.transcript = message
+            model.mode = .idle
+        }
+        let begin = {
+            guard model.permissions.allGranted else { return model.permissions.requestMissing() }
+            model.transcript = ""
+            model.mode = .listening
+            listener.start()
+        }
+        let end = {
+            guard listener.isListening else { return }
+            model.mode = .thinking  // mientras llega el texto final
+            listener.stop()
+        }
+        pushToTalk.onStart = begin
+        pushToTalk.onEnd = end
+        pushToTalk.onCancel = {
+            listener.cancel()
+            model.transcript = ""
+            model.mode = .idle
+        }
+        model.toggleTalk = { listener.isListening ? end() : begin() }
         // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
         accessibilityWatch = model.permissions.$states
             .map { $0[.accessibility] == .granted }
