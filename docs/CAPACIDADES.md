@@ -20,6 +20,10 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-08 | Abrir sitios | "Abre YouTube" | Local; abre la URL en el navegador por defecto |
 | C-09 | Música (Spotify) | "Pon tal canción", "pausa", "¿qué suena?" | AppleScript sobre Spotify |
 | C-10 | Interrumpir y silenciar | Esc la calla o cancela; modo silencio; se oculta en pantalla completa | Local |
+| C-23 | Temporizadores y recordatorios | "Avísame en 25 minutos", "recuérdame llamar mañana a las nueve" | Temporizadores locales persistentes; recordatorios en la app Recordatorios (EventKit) |
+| C-26 | Seguimiento de Claude Code y Codex | Avisar cuando un agente termina, falla o espera una respuesta, y volver a su sesión | Hooks de los agentes que avisan a Capri por un canal local, sin consultar en bucle |
+| C-32 | Ayuda con el texto seleccionado | Seleccionar un error y decir "¿qué significa esto?", "tradúcelo", "resúmelo" | Accesibilidad (selección de la app de delante), con copia temporal como alternativa; resultado copiable |
+| C-36 | Volumen del Mac | "Sube el volumen", "silencio" | Local, sin LLM en las órdenes comunes |
 | C-29 | Música en el notch | Notch cerrado: carátula a un lado y barras al otro mientras suena algo. Panel: carátula, canción, artista y controles en el sitio de la interfaz de Capri, sin cambiar el tamaño del panel | Avisos de Spotify al cambiar de canción (sin consultar en bucle: 0 % de CPU en reposo) + AppleScript para los controles |
 
 ### Principio de diseño
@@ -34,18 +38,19 @@ La información extra (música, uso de IA…) aparece cuando es relevante, por e
 ## Después (v2+, no comprometido)
 
 - C-20 Palabra de activación ("Capri") en vez de atajo de teclado
-- C-21 Memoria de conversaciones y preferencias
+- C-21 Memoria persistente explícita: recordar preferencias y decisiones, que el usuario pueda consultar, corregir y olvidar
 - C-22 Leer la ventana activa (captura de pantalla) como contexto de código
-- C-23 Recordatorios y temporizadores
 - C-24 Comentarios espontáneos / personalidad proactiva, con un modo silencio para desactivarlos
 - C-25 Presencia en el escritorio: aparecer fuera del notch, moverse e interactuar con la pantalla (D-7)
-- C-26 Narrar en el notch lo que hace Claude Code (hooks): acción actual, avisos de permiso, resumen al terminar
 - C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
 - C-28 Reacciones en espera sin gastar IA (miradas, gestos)
 - C-30 Uso de IA en el notch: consumo, créditos o límites de cada servicio (Claude, ChatGPT…). Cada servicio lo expone distinto (API con clave de administrador, archivos locales), así que se evalúa servicio por servicio
 - C-31 Guía en pantalla: Capri sale del notch y señala dónde hacer clic para llegar a lo que pides ("¿cómo reinicio?"). Depende de C-22 (ver la pantalla) y C-25 (moverse fuera del notch)
+- C-33 Dictado en otras apps: hablar para escribir donde esté el cursor (otro atajo, distinto del de conversar)
+- C-34 Rutinas: "modo trabajo" abre apps y el proyecto, ejecuta un Atajo de Apple e inicia un temporizador
+- C-35 Bandeja de archivos: arrastrarlos al notch para tenerlos a mano o preguntar por ellos ("¿por qué falla este log?")
 
-Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.md`.
+Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.md`. Origen de C-32 a C-36 y de la ampliación de C-21, C-23 y C-26: segunda revisión de proyectos del 2026-11-03 (fichas en `docs/FUNCIONES.md`).
 
 ## Decisiones
 

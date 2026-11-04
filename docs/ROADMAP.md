@@ -74,18 +74,44 @@ Rama: `fase-3/cerebro`, fusionada en `main`. Capri responde preguntas rápidas (
    - Costo estimado por pregunta: Haiku 4.5 ~US$0,0013 (los créditos dan para ~3 000), Sonnet 5 ~US$0,003, Haiku 5.5 con clave propia ~US$0,0002.
 - ✅ Hito: preguntas de terminal y de errores respondidas por voz, probado por el usuario con la app empaquetada y Haiku 4.5. La personalidad se ajustó para Haiku: no nombrar comandos en voz, dar el comando habitual de las herramientas comunes y `python3` en macOS.
 
-## Fase 4 — Acciones locales (C-06 a C-09)
-- ⬜ Tool calling: el LLM elige herramienta, la app la ejecuta
-- ⬜ Hora/fecha, abrir apps, abrir sitios
-- ⬜ Control de música
-- Hito: "abre Claude", "pon tal canción", "¿qué hora es?" funcionan
+## Fase 4 — Acciones locales (C-06 a C-09, C-36)
+Plan aprobado el 2026-11-03. Casi no necesita interfaz (Capri hace la acción y la confirma en voz), así que avanza en paralelo al diseño de la Fase 5. Fichas y criterios en [FUNCIONES.md](FUNCIONES.md).
+- ⬜ Registro de herramientas: el modelo elige una herramienta y la app la valida y la ejecuta. Comprobado: Haiku 4.5 por el gateway elige `abrir_app("Safari")` en ~1,3 s
+- ⬜ Vía rápida local para órdenes comunes ("pausa", "¿qué hora es?"), sin el modelo
+- ⬜ Registro de actividades con prioridades: la base para avisos y para decidir qué gana si coinciden varias cosas
+- ⬜ Hora y fecha, abrir apps, abrir sitios, volumen del Mac
+- ⬜ Música por voz: pausa, sigue, siguiente, anterior, "¿qué suena?" y "pon tal canción" (por decidir: API web de Spotify para buscar o solo abrir la búsqueda)
+- Hito: "abre Claude", "pon tal canción" y "¿qué hora es?" funcionan, con latencia y costo medidos
 
-## Fase 5 — Producto
+## Fase 5 — Estructura del panel y música
+Rediseño de la experiencia del notch: navegación, niveles (cerrado, abierto, ampliado), coincidencias y composición de Capri según la vista. Se conserva cómo se anima y aparece; se replantean el panel, "CAPRI / Aquí estoy", el botón Hablar y el reproductor. Música va primero para validar la estructura.
+- ⬜ Comparar dos o tres estructuras de navegación y elegir una
+- ⬜ Bocetos de música, asistente, aviso y resultado
+- ⬜ Implementar la estructura elegida y el nuevo reproductor
+- ⬜ Estados comunes en la interfaz: escuchando, interpretando, ejecutando, esperando, completado y falló
+- Hito: el panel nuevo funciona con música y conversación, y en reposo sigue a 0 % de CPU
+
+## Fase 6 — Temporizadores y recordatorios (C-23)
+- ⬜ Temporizadores locales que sobreviven a reiniciar la app
+- ⬜ Recordatorios en la app Recordatorios (EventKit)
+- Hito: "avísame en 25 minutos" y "recuérdame … mañana a las nueve" funcionan y se pueden ver y cancelar
+
+## Fase 7 — Seguimiento de Claude Code y Codex (C-26)
+- ⬜ Hooks de Claude Code que avisan a Capri por un canal local; comprobar qué expone Codex
+- ⬜ Avisos de trabajando, esperando, terminado y error, con acceso a la sesión
+- Hito: Capri avisa en menos de un segundo cuando un agente termina o espera, sin consumo en reposo
+
+## Fase 8 — Texto seleccionado (C-32)
+- ⬜ Leer la selección por Accesibilidad, con copia temporal como alternativa
+- ⬜ Explicar, traducir, resumir y reescribir, con resultado copiable
+- Hito: funciona en Terminal, el navegador, el editor de código y Notas
+
+## Fase 9 — Producto
 - ⬜ Empaquetar como `.app` con icono, que se inicie con la sesión
-- ⬜ Ajustes (API key en Llavero, atajo, voz)
+- ⬜ Ajustes en una ventana propia (clave de la API, atajo, voz)
 - ⬜ Abrir ajustes y salir desde el panel: si la barra de menús está llena, macOS esconde el icono de Capri detrás del notch
 - ⬜ README con GIF/video de demo, diagrama de arquitectura
 - ⬜ Release v1.0
 
-## Fase 6+ — Extras
-Capacidades C-20 en adelante, según interés. Candidata destacada: C-30, uso de IA en el notch.
+## Fase 10+ — Extras
+Siguientes candidatas: dictado en otras apps (C-33), rutinas con Atajos (C-34), bandeja de archivos (C-35) y memoria persistente (C-21). Después, C-20 en adelante según interés; ver la lista de evaluación en [FUNCIONES.md](FUNCIONES.md).
