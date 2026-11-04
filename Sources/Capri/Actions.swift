@@ -24,7 +24,7 @@ enum VolumeChange: Equatable {
 enum MusicRequest: Equatable {
     case pause, play, next, previous, nowPlaying
     /// Canción, artista o álbum.
-    case search(String)
+    case search(String, MusicKind)
 }
 
 /// Lo que Capri dice al terminar y si la acción se hizo de verdad.
@@ -92,7 +92,8 @@ enum Tools {
                 "type": "object",
                 "properties": [
                     "accion": ["type": "string", "enum": ["pausar", "seguir", "siguiente", "anterior", "que_suena", "poner"]],
-                    "busqueda": ["type": "string", "description": "Solo con poner: canción, artista o álbum"],
+                    "busqueda": ["type": "string", "description": "Solo con poner: qué buscar, p. ej. Tusa Karol G"],
+                    "tipo": ["type": "string", "enum": ["cancion", "artista", "album"], "description": "Solo con poner"],
                 ],
                 "required": ["accion"],
             ],
@@ -133,7 +134,13 @@ enum Tools {
             case "siguiente": return .music(.next)
             case "anterior": return .music(.previous)
             case "que_suena": return .music(.nowPlaying)
-            case "poner": return text("busqueda").map { .music(.search($0)) }
+            case "poner":
+                let kind: MusicKind = switch text("tipo") {
+                case "artista": .artist
+                case "album": .album
+                default: .track
+                }
+                return text("busqueda").map { .music(.search($0, kind)) }
             default: return nil
             }
         default:
@@ -147,9 +154,10 @@ enum Tools {
 final class ActionRunner {
     let music: MusicWatcher
     let apps = AppCatalog()
+    let spotifyWeb = SpotifyWeb()
     /// Lo que cambia el volumen con "sube" o "baja" (de 0 a 100).
     static let volumeStep = 10
-    private let log = Logger(subsystem: "com.rosvjames.capri", category: "acciones")
+    fileprivate let log = Logger(subsystem: "com.rosvjames.capri", category: "acciones")
 
     init(music: MusicWatcher) {
         self.music = music
@@ -241,16 +249,24 @@ final class ActionRunner {
             // Sin aviso de Spotify todavía (lo que ya sonaba al abrir Capri), se le pregunta.
             guard music.current == nil, SpotifyRemote.isRunning else { return say(music.current) }
             spotify.readNowPlaying(ask: true, say)
-        case .search(let query):
-            // Sin la API web de Spotify no se puede elegir un resultado: se abre la búsqueda en la app
-            // (o en la web si no está instalada).
-            guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: ":/"))) else {
-                return done(.failed("No pude buscar eso."))
-            }
-            let installed = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MusicWatcher.spotifyID) != nil
-            let url = URL(string: installed ? "spotify:search:\(encoded)" : "https://open.spotify.com/search/\(encoded)")!
-            NSWorkspace.shared.open(url, configuration: NSWorkspace.OpenConfiguration()) { running, _ in
-                done(running != nil ? .done("Te dejé la búsqueda en Spotify.") : .failed("No pude abrir Spotify."))
+        case .search(let query, let kind):
+            guard SpotifyWeb.hasCredentials else { return openSearch(query, done) }
+            spotifyWeb.search(query, kind: kind) { [self] result in
+                switch result {
+                case .success(let found):
+                    spotify.play(found.uri) { state in
+                        guard let state else { return done(.failed("Spotify no respondió.")) }
+                        done(state == "playing" ? .done("Pongo \(found.spoken).") : .failed("Spotify no empezó a sonar."))
+                    }
+                case .failure(.notFound):
+                    done(.failed("No encontré eso en Spotify."))
+                case .failure(.premiumRequired):
+                    log.error("la API de Spotify pide Premium en la cuenta dueña de la app")
+                    openSearch(query, done)
+                case .failure:
+                    // Sin internet o credenciales no válidas: al menos la búsqueda en la app.
+                    openSearch(query, done)
+                }
             }
         case .pause, .play, .next, .previous:
             guard SpotifyRemote.isRunning else { return done(.failed("Spotify está cerrado.")) }
@@ -274,6 +290,21 @@ final class ActionRunner {
                 default: done(.done("Anterior."))
                 }
             }
+        }
+    }
+}
+
+extension ActionRunner {
+    /// Sin la API web de Spotify no se puede elegir un resultado: se abre la búsqueda en la app (o en la web si
+    /// no está instalada).
+    fileprivate func openSearch(_ query: String, _ done: @escaping (ActionOutcome) -> Void) {
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: ":/"))) else {
+            return done(.failed("No pude buscar eso."))
+        }
+        let installed = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MusicWatcher.spotifyID) != nil
+        let url = URL(string: installed ? "spotify:search:\(encoded)" : "https://open.spotify.com/search/\(encoded)")!
+        NSWorkspace.shared.open(url, configuration: NSWorkspace.OpenConfiguration()) { running, _ in
+            done(running != nil ? .done("Te dejé la búsqueda en Spotify.") : .failed("No pude abrir Spotify."))
         }
     }
 }

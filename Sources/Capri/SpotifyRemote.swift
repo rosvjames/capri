@@ -106,6 +106,43 @@ final class SpotifyRemote {
             """, ask: true) { done($0?.isEmpty == false ? $0 : nil) }
     }
 
+    /// Reproduce una canción, un artista o un álbum (`spotify:track:…`) y devuelve el estado del reproductor,
+    /// o nil si no se pudo. Si Spotify está cerrado lo abre, sin traerlo al frente, y espera a que responda.
+    /// `done` llega en el hilo principal.
+    func play(_ uri: String, _ done: @escaping (String?) -> Void) {
+        // Solo URIs de Spotify bien formados: van dentro del script.
+        guard uri.range(of: "^spotify:(track|artist|album|playlist):[A-Za-z0-9]+$", options: .regularExpression) != nil else {
+            return done(nil)
+        }
+        let script = """
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    play track "\(uri)"
+                    repeat 15 times
+                        if (player state as string) is "playing" then exit repeat
+                        delay 0.1
+                    end repeat
+                    return player state as string
+                end tell
+            end if
+            return ""
+            """
+        // Recién abierto, Spotify tarda unos segundos en aceptar órdenes: se reintenta.
+        func attempt(_ left: Int) {
+            run(script, ask: true) { state in
+                if state == "playing" || left == 0 { return done(state?.isEmpty == false ? state : nil) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { attempt(left - 1) }
+            }
+        }
+        if Self.isRunning { return attempt(1) }
+        guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MusicWatcher.spotifyID) else { return done(nil) }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        NSWorkspace.shared.openApplication(at: app, configuration: configuration) { running, _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { running == nil ? done(nil) : attempt(5) }
+        }
+    }
+
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.
     private func run(_ source: String, ask: Bool, _ done: @escaping (String?) -> Void) {
         guard Self.isRunning, !(ask && asking) else { return done(nil) }

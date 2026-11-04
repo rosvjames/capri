@@ -78,17 +78,18 @@ enum QuickCommands {
 
     /// Solo frases inequívocas: "pon la canción X", "pon X en Spotify", "pon música de X".
     private static func song(_ text: String) -> Action? {
-        let patterns = [
-            "^(pon|ponme|reproduce|toca) (la cancion|el disco|el album) (.+)$",
-            "^(pon|ponme|reproduce|toca) (musica de|algo de|canciones de) (.+)$",
-            "^(pon|ponme|reproduce|toca) (.+) en spotify$",
+        let patterns: [(String, MusicKind)] = [
+            ("^(pon|ponme|reproduce|toca) (la cancion) (.+)$", .track),
+            ("^(pon|ponme|reproduce|toca) (el disco|el album) (.+)$", .album),
+            ("^(pon|ponme|reproduce|toca) (musica de|algo de|canciones de) (.+)$", .artist),
+            ("^(pon|ponme|reproduce|toca) (.+) en spotify$", .track),
         ]
-        for pattern in patterns {
+        for (pattern, kind) in patterns {
             guard let regex = try? NSRegularExpression(pattern: pattern),
                   let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
                   let range = Range(match.range(at: match.numberOfRanges - 1), in: text) else { continue }
             let query = String(text[range]).trimmingCharacters(in: .whitespaces)
-            return query.isEmpty ? nil : .music(.search(query))
+            return query.isEmpty ? nil : .music(.search(query, kind))
         }
         return nil
     }
