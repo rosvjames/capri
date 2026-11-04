@@ -9,14 +9,15 @@ struct NotchView: View {
     private var showsMusic: Bool { !active && model.nowPlaying?.isPlaying == true }
 
     var body: some View {
-        let m = model.metrics, g = model.geometry
-        let top: CGFloat = model.expanded ? g.topRadius : 6
-        let bottom: CGFloat = model.expanded ? g.bottomRadius : 12
+        let m = model.metrics, f = model.panelFrame
+        let top: CGFloat = model.expanded ? f.topRadius : 6
+        let bottom: CGFloat = model.expanded ? f.bottomRadius : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
-        let w = (model.expanded ? g.bodyWidth : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
-        let h = model.expanded ? g.height + model.stripHeight : m.height
-        // Abierto, el panel sigue la maqueta v3 (no está centrado en la cámara); cerrado, se centra en ella.
-        let dx = model.expanded ? g.offsetX : 0
+        let w = (model.expanded ? f.width : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
+        let h = model.expanded ? f.height : m.height
+        // Abierto, el asistente sigue la maqueta v3 (no está centrado en la cámara) y la música se centra en ella;
+        // cerrado, se centra en ella.
+        let dx = model.expanded ? f.offsetX : 0
 
         ZStack(alignment: .top) {
             NotchShape(topRadius: top, bottomRadius: bottom)
@@ -42,8 +43,9 @@ struct NotchView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.mode)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showsMusic)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.showsStrip)
+        .animation(.spring(response: 0.42, dampingFraction: 0.85), value: model.section)
         .contentShape(Rectangle())
-        .onTapGesture { if model.expanded { model.mode = model.mode.next } }
+        .onTapGesture { if model.expanded, model.section == .assistant { model.mode = model.mode.next } }
     }
 
     @ViewBuilder
@@ -100,21 +102,25 @@ struct NotchView: View {
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
         Group {
             if model.expanded {
-                VStack(alignment: .leading, spacing: 0) {
-                    ZStack(alignment: .topLeading) {
-                        // Con música, su columna ocupa el sitio de la interfaz de Capri; Capri no se mueve (C-29).
-                        ExpandedPresenceView(model: model, permissions: model.permissions, showsInterface: !model.showsMusicPanel)
-                        if model.showsMusicPanel {
-                            MusicColumnView(model: model)
+                switch model.section {
+                case .assistant:
+                    VStack(alignment: .leading, spacing: 0) {
+                        ZStack(alignment: .topLeading) {
+                            ExpandedPresenceView(model: model, permissions: model.permissions)
+                            SectionTabsView(model: model)
+                        }
+                        if model.showsStrip, let copyable = model.copyable {
+                            CopyStripView(model: model, text: copyable)
                                 .transition(.opacity)
                         }
                     }
-                    if model.showsStrip, let copyable = model.copyable {
-                        CopyStripView(model: model, text: copyable)
-                            .transition(.opacity)
-                    }
+                    .padding(.leading, top)
+                    .transition(.opacity)
+                case .music:
+                    MusicPanelView(model: model)
+                        .padding(.leading, top)
+                        .transition(.opacity)
                 }
-                .padding(.leading, top)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

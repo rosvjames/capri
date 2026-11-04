@@ -143,6 +143,51 @@ final class SpotifyRemote {
         }
     }
 
+    /// Posición, duración y repetición de lo que suena. Sin preguntar por el permiso. `done` llega en el hilo
+    /// principal, con nil si Spotify está cerrado, parado o sin permiso.
+    func readPlayback(_ done: @escaping (PlaybackClock?, Bool?) -> Void) {
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    if player state is stopped then return ""
+                    set s to character id 31
+                    return (player position as string) & s & ((duration of current track) as string) & s & (repeating as string) & s & (player state as string)
+                end tell
+            end if
+            return ""
+            """, ask: false) { text in
+            let f = text?.components(separatedBy: "\u{1F}") ?? []
+            // AppleScript escribe los decimales con la coma del idioma del Mac.
+            let number = { (t: String) in Double(t.replacingOccurrences(of: ",", with: ".")) }
+            guard f.count == 4, let position = number(f[0]), let duration = number(f[1]), duration > 0 else { return done(nil, nil) }
+            done(PlaybackClock(position: position, duration: duration / 1000, at: Date(), playing: f[3] == "playing"), f[2] == "true")
+        }
+    }
+
+    /// Salta a `seconds` de la canción que suena.
+    func seek(to seconds: TimeInterval) {
+        let value = String(format: "%.2f", max(0, seconds))
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)" to set player position to \(value)
+            end if
+            return ""
+            """, ask: true) { _ in }
+    }
+
+    /// Activa o quita la repetición y devuelve cómo quedó (nil si no se pudo).
+    func toggleRepeat(_ done: @escaping (Bool?) -> Void) {
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    set repeating to not repeating
+                    return repeating as string
+                end tell
+            end if
+            return ""
+            """, ask: true) { text in done(text == "true" ? true : text == "false" ? false : nil) }
+    }
+
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.
     /// Solo se evita mostrar dos avisos del permiso a la vez. Con el permiso concedido, los scripts esperan su
     /// turno en la cola: la carátula se pide mientras sigue el de "pon tal canción", que espera a que suene.

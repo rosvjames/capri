@@ -75,9 +75,33 @@ final class AssistantModel: ObservableObject {
     @Published var artwork: NSImage?
     /// Controles de Spotify desde el panel; lo conecta AppDelegate.
     var musicCommand: (MusicCommand) -> Void = { _ in }
-    /// El panel abierto muestra la música en lugar de la columna de Capri: hay canción y Capri está en reposo.
-    /// Si escucha, piensa o habla, el panel vuelve a ser suyo (C-29): la conversación tiene más prioridad.
-    var showsMusicPanel: Bool { activities.foreground == .music }
+    /// Posición, duración y repetición de la canción, para la barra de progreso; nil si no se conocen.
+    @Published var clock: PlaybackClock?
+    @Published var repeating: Bool?
+    /// Saltar a un punto de la canción, activar o quitar la repetición, y leer el reloj al abrir el panel.
+    var seek: (TimeInterval) -> Void = { _ in }
+    var toggleRepeat: () -> Void = {}
+    var refreshPlayback: () -> Void = {}
+    /// Sección elegida con los iconos del panel; nil hasta que se pulsa uno. Se olvida al cerrar el panel.
+    @Published var selectedSection: PanelSection?
+    /// Sección a la vista. Si Capri escucha, piensa o habla (o acaba de responder), el panel es suyo: la
+    /// conversación tiene más prioridad (C-29). Si no, la elegida o, sin elegir, la música si hay canción.
+    var section: PanelSection {
+        if mode != .idle || openedForSpeech || showsStrip { return .assistant }
+        if let selectedSection { return selectedSection }
+        return activities.foreground == .music ? .music : .assistant
+    }
+    /// Medidas del cuerpo del panel abierto en la sección actual.
+    var panelFrame: PanelFrame {
+        switch section {
+        case .assistant:
+            PanelFrame(width: geometry.bodyWidth, height: geometry.height + stripHeight, offsetX: geometry.offsetX,
+                       topRadius: geometry.topRadius, bottomRadius: geometry.bottomRadius)
+        case .music:
+            PanelFrame(width: MusicLayout.width, height: MusicLayout.height, offsetX: 0,
+                       topRadius: geometry.topRadius, bottomRadius: geometry.bottomRadius)
+        }
+    }
     /// Lo que hay que leer o copiar de la última respuesta (comando, código, enlace), o nil si solo era para oírse.
     @Published var copyable: String?
     /// La franja inferior con `copyable` está a la vista: aparece al terminar de hablar y se va con el panel (C-03).
@@ -104,10 +128,53 @@ final class AssistantModel: ObservableObject {
         geometry = ExpandedGeometry(metrics: metrics)
     }
 
-    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para el panel abierto y su franja más alta.
+    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para la sección más grande
+    /// (el asistente con su franja más alta, o la música).
     var windowSize: CGSize {
-        let halfWidth = max(-geometry.minX, geometry.maxX) + geometry.topRadius
-        return CGSize(width: 2 * (halfWidth + Layout.panelPadX),
-                      height: geometry.height + CopyStrip.maxHeight(geometry: geometry) + Layout.panelPadY)
+        let halfWidth = max(-geometry.minX, geometry.maxX, MusicLayout.width / 2) + geometry.topRadius
+        let height = max(geometry.height + CopyStrip.maxHeight(geometry: geometry), MusicLayout.height)
+        return CGSize(width: 2 * (halfWidth + Layout.panelPadX), height: height + Layout.panelPadY)
+    }
+}
+
+/// Secciones del panel abierto, elegidas con los iconos de arriba a la izquierda. Pendientes y Agentes
+/// llegarán con sus funciones (Fases 6 y 7).
+enum PanelSection: CaseIterable {
+    case assistant, music
+
+    var symbol: String {
+        switch self {
+        case .assistant: "bubble.left"
+        case .music: "music.note"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .assistant: "Asistente"
+        case .music: "Música"
+        }
+    }
+}
+
+/// Cuerpo del panel abierto: ancho y alto visibles, desplazamiento respecto a la cámara y radios.
+struct PanelFrame: Equatable {
+    let width: CGFloat
+    let height: CGFloat
+    let offsetX: CGFloat
+    let topRadius: CGFloat
+    let bottomRadius: CGFloat
+}
+
+/// Dónde va la canción: la posición leída en un momento y si avanza desde entonces. Así la barra de progreso
+/// no necesita preguntarle a Spotify cada segundo.
+struct PlaybackClock: Equatable {
+    let position: TimeInterval
+    let duration: TimeInterval
+    let at: Date
+    let playing: Bool
+
+    func position(at date: Date) -> TimeInterval {
+        min(duration, max(0, position + (playing ? date.timeIntervalSince(at) : 0)))
     }
 }

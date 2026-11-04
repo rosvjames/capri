@@ -19,6 +19,9 @@ final class MusicWatcher: NSObject {
     var onChange: (NowPlaying?) -> Void = { _ in }
     /// Carátula de la canción actual; nil al cambiar de canción hasta que llega la nueva.
     var onArtwork: (NSImage?) -> Void = { _ in }
+    /// Posición y duración de la canción (nil sin canción), y si Spotify repite (nil si no se sabe).
+    var onClock: (PlaybackClock?) -> Void = { _ in }
+    var onRepeat: (Bool?) -> Void = { _ in }
     private(set) var current: NowPlaying?
     let spotify = SpotifyRemote()
 
@@ -48,6 +51,7 @@ final class MusicWatcher: NSObject {
         spotify.readNowPlaying(ask: false) { [weak self] value in
             guard let self, self.current == nil, let value else { return }
             self.update(value)
+            self.refreshPlayback()
         }
     }
 
@@ -62,10 +66,27 @@ final class MusicWatcher: NSObject {
         guard state == "Playing" || state == "Paused", let id = info["Track ID"] as? String else { return update(nil) }
         update(NowPlaying(trackID: id, title: info["Name"] as? String ?? "", artist: info["Artist"] as? String ?? "",
                           album: info["Album"] as? String ?? "", isPlaying: state == "Playing"))
+        // El aviso trae la posición (s) y la duración (ms) en el momento del cambio.
+        if let position = (info["Playback Position"] as? NSNumber)?.doubleValue,
+           let duration = (info["Duration"] as? NSNumber)?.doubleValue, duration > 0 {
+            onClock(PlaybackClock(position: position, duration: duration / 1000, at: Date(), playing: state == "Playing"))
+        }
+    }
+
+    /// Lee la posición, la duración y la repetición de lo que suena, para el panel de música (sin preguntar
+    /// por el permiso: si aún no se concedió, el panel se queda sin barra de progreso).
+    func refreshPlayback() {
+        guard current != nil else { return }
+        spotify.readPlayback { [weak self] clock, repeating in
+            guard let self, self.current != nil else { return }
+            if let clock { self.onClock(clock) }
+            self.onRepeat(repeating)
+        }
     }
 
     private func update(_ value: NowPlaying?) {
         guard value != current else { return }
+        if value == nil || value?.trackID != current?.trackID { onClock(nil) }
         current = value
         let state = value.map { $0.isPlaying ? "suena" : "en pausa" } ?? "nada"
         log.notice("música: \(state, privacy: .public) \(value?.trackID ?? "", privacy: .public)")

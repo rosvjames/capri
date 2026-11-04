@@ -114,7 +114,11 @@ final class NotchController {
         model.expanded = value
         panel.ignoresMouseEvents = !value
         // Pudo cambiar los permisos en Ajustes del Sistema mientras el panel estaba cerrado.
-        if value { model.permissions.refresh() } else {
+        if value {
+            model.permissions.refresh()
+            model.refreshPlayback()
+        } else {
+            model.selectedSection = nil
             model.openedForSpeech = false
             if model.mode == .idle { model.transcript = "" }
             model.showsStrip = false
@@ -124,10 +128,10 @@ final class NotchController {
     }
 
     private func hoverRect(expanded: Bool) -> NSRect {
-        let m = model.metrics, g = model.geometry
-        let w = expanded ? g.bodyWidth + 24 : m.width + 2 * Layout.collapsedSide
-        let h = expanded ? g.height + model.stripHeight + 10 : m.height + 2
-        let centerX = screen.frame.midX + m.centerOffset + (expanded ? g.offsetX : 0)
+        let m = model.metrics, f = model.panelFrame
+        let w = expanded ? f.width + 24 : m.width + 2 * Layout.collapsedSide
+        let h = expanded ? f.height + 10 : m.height + 2
+        let centerX = screen.frame.midX + m.centerOffset + (expanded ? f.offsetX : 0)
         return NSRect(x: centerX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
     }
 

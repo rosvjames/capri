@@ -23,6 +23,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         music.onChange = { notch.model.nowPlaying = $0 }
         music.onArtwork = { notch.model.artwork = $0 }
         notch.model.musicCommand = { [music] in music.spotify.send($0) }
+        music.onClock = { notch.model.clock = $0 }
+        music.onRepeat = { notch.model.repeating = $0 }
+        notch.model.refreshPlayback = { [music] in music.refreshPlayback() }
+        notch.model.seek = { [music] seconds in
+            music.spotify.seek(to: seconds)
+            // Se muestra el salto en seguida; la lectura siguiente lo confirma.
+            if let clock = notch.model.clock {
+                notch.model.clock = PlaybackClock(position: seconds, duration: clock.duration, at: Date(), playing: clock.playing)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { music.refreshPlayback() }
+        }
+        notch.model.toggleRepeat = { [music] in
+            music.spotify.toggleRepeat { if let value = $0 { notch.model.repeating = value } }
+        }
         music.start()
 
         // Modo demostración: CAPRI_DEMO=1 abre el notch y cicla los estados.
@@ -193,7 +207,8 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos"),
                                        music: args.contains("musica"),
                                        strip: args.contains("franja2") ? "brew install node\nnode -v\nnpm -v"
-                                           : args.contains("franja") ? "docker run --name web -p 8080:80 nginx" : nil) }
+                                           : args.contains("franja") ? "docker run --name web -p 8080:80 nginx" : nil,
+                                       section: args.contains("asistente") ? .assistant : nil) }
     exit(0)
 }
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {

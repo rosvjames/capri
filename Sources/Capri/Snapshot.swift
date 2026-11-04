@@ -5,7 +5,8 @@ import SwiftUI
 //   Capri --snapshot ruta.png [modo] [colapsado] [sinpermisos] [musica] [t=ms]
 //       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
 //       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto;
-//       musica simula una canción sonando con una carátula sintética (no usa la de Spotify);
+//       musica simula una canción sonando con una carátula sintética (no usa la de Spotify): abierto, la
+//       vista de música; asistente la fuerza a la del asistente;
 //       franja muestra la franja de copiar con un comando de ejemplo (franja2: varias líneas)
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
 //   Capri --icon ruta.png                          icono de la barra de menús a 18, 36 y 144 px, en barra clara y oscura
@@ -13,7 +14,7 @@ import SwiftUI
 
 @MainActor
 func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0, withoutPermissions: Bool = false,
-                   music: Bool = false, strip: String? = nil) {
+                   music: Bool = false, strip: String? = nil, section: PanelSection? = nil) {
     let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     let model = AssistantModel(metrics: screen.map(NotchMetrics.of) ?? NotchMetrics(width: 185, height: 32))
     _ = NotchFrames.shared  // decodificar antes de fijar la hora, para que el instante capturado sea el pedido
@@ -24,10 +25,13 @@ func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, 
     }))
     model.expandedAt = Date().addingTimeInterval(-elapsedMs / 1000)
     if music {
-        model.nowPlaying = NowPlaying(trackID: "spotify:track:prueba", title: "Canción de prueba con un título largo", artist: "Artista de prueba",
+        model.nowPlaying = NowPlaying(trackID: "spotify:track:prueba", title: "I Really Want to Stay at Your House", artist: "Rosa Walton · Hallie Coggins",
                                       album: "Álbum", isPlaying: true)
         model.artwork = syntheticArtwork()
+        model.clock = PlaybackClock(position: 102, duration: 208, at: Date(), playing: true)
+        model.repeating = false
     }
+    model.selectedSection = section
     model.copyable = strip
     model.showsStrip = strip != nil
     let size = model.windowSize
