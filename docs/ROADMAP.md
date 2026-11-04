@@ -74,14 +74,18 @@ Rama: `fase-3/cerebro`, fusionada en `main`. Capri responde preguntas rápidas (
    - Costo estimado por pregunta: Haiku 4.5 ~US$0,0013 (los créditos dan para ~3 000), Sonnet 5 ~US$0,003, Haiku 5.5 con clave propia ~US$0,0002.
 - ✅ Hito: preguntas de terminal y de errores respondidas por voz, probado por el usuario con la app empaquetada y Haiku 4.5. La personalidad se ajustó para Haiku: no nombrar comandos en voz, dar el comando habitual de las herramientas comunes y `python3` en macOS.
 
-## Fase 4 — Acciones locales (C-06 a C-09, C-36)
-Plan aprobado el 2026-11-03. Casi no necesita interfaz (Capri hace la acción y la confirma en voz), así que avanza en paralelo al diseño de la Fase 5. Fichas y criterios en [FUNCIONES.md](FUNCIONES.md).
-- ⬜ Registro de herramientas: el modelo elige una herramienta y la app la valida y la ejecuta. Comprobado: Haiku 4.5 por el gateway elige `abrir_app("Safari")` en ~1,3 s
-- ⬜ Vía rápida local para órdenes comunes ("pausa", "¿qué hora es?"), sin el modelo
-- ⬜ Registro de actividades con prioridades: la base para avisos y para decidir qué gana si coinciden varias cosas
-- ⬜ Hora y fecha, abrir apps, abrir sitios, volumen del Mac
-- ⬜ Música por voz: pausa, sigue, siguiente, anterior, "¿qué suena?" y "pon tal canción" (por decidir: API web de Spotify para buscar o solo abrir la búsqueda)
-- Hito: "abre Claude", "pon tal canción" y "¿qué hora es?" funcionan, con latencia y costo medidos
+## Fase 4 — Acciones locales (C-06 a C-09, C-36) 🟨
+Rama: `fase-4/acciones`. Plan aprobado el 2026-11-03. Casi no necesita interfaz (Capri hace la acción y la confirma en voz), así que avanza en paralelo al diseño de la Fase 5. Fichas y criterios en [FUNCIONES.md](FUNCIONES.md).
+- ✅ **Registro de herramientas** (`Actions.swift`): el modelo elige una herramienta (`hora_en`, `abrir_app`, `abrir_sitio`, `volumen`, `musica`) y la app valida sus datos (`Tools.action`) antes de ejecutarla (`ActionRunner`). La herramienta llega en el streaming (`tool_use` + `input_json_delta`) y la confirmación sale de una plantilla local, sin segunda llamada al modelo. En el historial queda la confirmación como texto, así se puede seguir el hilo ("¿y en Madrid?"). Gemma no usa herramientas: con ella solo funciona la vía rápida.
+- ✅ **Vía rápida** (`QuickCommands.swift`): frases enteras y conocidas ("pausa", "¿qué hora es?", "abre Safari", "volumen al 40", "pon música de …") se resuelven en el Mac en 0–0,3 s, sin internet ni costo. Ante la duda, la frase va al modelo: "¿para qué sirve la pausa?" no se toma por una orden. `--entender "frase"` muestra qué reconoce sin ejecutarlo.
+- ✅ **Registro de actividades** (`Activities.swift`): cada actividad tiene prioridad y la de más prioridad ocupa el notch. Hoy, la conversación (100) gana a la música (10); los avisos de las Fases 6 y 7 entrarán como actividades nuevas.
+- ✅ **Hora y fecha** (C-06), dichas en palabras ("Son las once y cuarto de la noche"). La hora de otras ciudades la calcula el Mac: el modelo solo elige la zona horaria (Haiku se equivocaba al sumar husos). El modelo recibe la fecha, la hora y la zona en cada pregunta.
+- ✅ **Abrir apps** (C-07): busca en las carpetas de apps por nombre, también en español ("calculadora", "ajustes", "monitor de actividad") o aproximado ("chat gpt", "vs code"), y confirma cuando macOS la abrió.
+- ✅ **Abrir sitios** (C-08): sitios conocidos por su nombre ("YouTube", "Gmail") o una dirección; solo `http` y `https` con dominio.
+- ✅ **Volumen del Mac** (C-36), por Core Audio, sin permisos: subir y bajar de 10 en 10, fijar, silenciar y quitar el silencio.
+- 🟨 **Música por voz** (C-09): pausa, sigue, siguiente, anterior y "¿qué suena?" funcionan y se comprueban con el estado de Spotify. "Pon tal canción" abre la búsqueda en Spotify; poner el primer resultado necesita la API web de Spotify (decisión pendiente).
+- Medido con Haiku 4.5 por el gateway: herramienta elegida en 0,6–1,0 s (a veces ~2 s) y acción hecha en 0,01–0,3 s más. Las cinco herramientas suben la petición de ~890 a ~1 950 tokens de entrada: ~US$0,0023 por pregunta en vez de ~US$0,0013. Tras volver a firmar la app, la primera lectura del Llavero tarda ~8 s (solo al desarrollar; en uso normal la clave se lee mientras James habla).
+- ⬜ Hito: "abre Claude", "pon tal canción" y "¿qué hora es?" funcionan por voz en la app, con latencia y costo medidos
 
 ## Fase 5 — Estructura del panel y música
 Rediseño de la experiencia del notch: navegación, niveles (cerrado, abierto, ampliado), coincidencias y composición de Capri según la vista. Se conserva cómo se anima y aparece; se replantean el panel, "CAPRI / Aquí estoy", el botón Hablar y el reproductor. Música va primero para validar la estructura.

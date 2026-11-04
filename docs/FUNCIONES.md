@@ -36,7 +36,7 @@ Estado: acordado el 2026-11-03. Las fichas se completan cuando el diseño de cad
 
 ### Acciones locales (C-06 a C-09, C-36) — Fase 4
 - **Necesidad:** hacer cosas del Mac por voz sin buscarlas. "¿Qué hora es?", "abre Safari", "abre YouTube", "sube el volumen", "pausa".
-- **Entrada:** la frase dictada. Las órdenes comunes se resuelven en el Mac sin el modelo; las abiertas las interpreta el modelo, que elige una herramienta con sus datos (`abrir_app("Safari")`), y la app la ejecuta.
+- **Entrada:** la frase dictada. Las órdenes comunes se resuelven en el Mac sin el modelo; las abiertas las interpreta el modelo, que elige una herramienta con sus datos (`abrir_app("Safari")`), y la app la ejecuta. Lo que el modelo calcula mal (la hora en otra ciudad) lo calcula el Mac: el modelo solo elige la zona horaria.
 - **Estados:** escuchando → interpretando → ejecutando → completado o falló.
 - **Resultado:** la acción hecha y comprobada, con una confirmación hablada corta ("Abriendo Safari", "Son las nueve y cuarenta"). En pantalla, como mucho una señal breve.
 - **Errores:** app no encontrada ("No encuentro esa app"), dirección no válida, Spotify cerrado, sin internet (la vía local sigue funcionando).
