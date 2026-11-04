@@ -13,7 +13,7 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-01 | Conversación por voz | Hablarle y que responda en voz alta | Activación → reconocimiento de voz → LLM → síntesis de voz |
 | C-02 | Presencia en el notch | Ver su estado: en espera, escuchando, pensando, respondiendo | Panel SwiftUI sobre el notch con la estética de Capri |
 | C-03 | Preguntas de terminal | "¿Cuál es el comando para listar puertos abiertos?" | LLM; la respuesta se muestra copiable en el panel además de decirse en voz |
-| C-04 | Revisión de código | "¿Qué errores ves en este código?" | LLM + contexto: portapapeles, texto seleccionado o archivo arrastrado al notch |
+| C-04 | Dudas rápidas de código | "¿Qué hace este comando?" (no es revisión a fondo: para eso están Claude y Codex) | LLM + contexto: portapapeles; archivo arrastrado al notch, más adelante |
 | C-05 | Explicar errores | "¿Por qué me da este error?" | Igual que C-04, con el mensaje de error como contexto |
 | C-06 | Hora y fecha | "¿Qué hora es?" | Local, sin LLM |
 | C-07 | Abrir aplicaciones | "Abre Safari", "abre Claude", "abre ChatGPT" | Local (`NSWorkspace`); el LLM solo identifica la intención |
@@ -43,6 +43,7 @@ La información extra (música, uso de IA…) aparece cuando es relevante, por e
 - C-27 Reaccionar al Mac: cargador, batería, AirPods, CPU al máximo
 - C-28 Reacciones en espera sin gastar IA (miradas, gestos)
 - C-30 Uso de IA en el notch: consumo, créditos o límites de cada servicio (Claude, ChatGPT…). Cada servicio lo expone distinto (API con clave de administrador, archivos locales), así que se evalúa servicio por servicio
+- C-31 Guía en pantalla: Capri sale del notch y señala dónde hacer clic para llegar a lo que pides ("¿cómo reinicio?"). Depende de C-22 (ver la pantalla) y C-25 (moverse fuera del notch)
 
 Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.md`.
 
@@ -52,7 +53,7 @@ Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.
 
 | # | Pregunta | Decisión |
 |---|---|---|
-| D-1 | ¿Qué LLM? | Claude API como principal, detrás de un protocolo para poder añadir Ollama (local) después |
+| D-1 | ¿Qué LLM? | **Modelo local con Ollama** (Gemma 4 12B: ~1 s por respuesta en un M1 Max, gratis), detrás de un protocolo. Claude API (Haiku) queda como respaldo, con un tope de ~US$5/mes. Revisado 2026-11-03: Capri es para preguntas rápidas, no para trabajo de código a fondo |
 | D-2 | ¿Cómo se activa? | **⌘ derecho mantenido** (push-to-talk): hablas mientras lo mantienes y al soltar Capri responde. También el botón Hablar del panel. Palabra de activación en v2 (C-20). Decidido 2026-11-02 |
 | D-3 | ¿Qué app de música? | Spotify |
 | D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) en v1 |

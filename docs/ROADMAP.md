@@ -57,11 +57,12 @@ Rama: `fase-2b/musica`, fusionada en `main`. Solo Spotify. Decisiones: notch cer
 6. ✅ **Convivencia**: en pausa o sin Spotify el notch vuelve a su estado normal, y si Capri escucha, piensa o habla tiene prioridad (pasos 4 y 5). ~~Abrir el panel unos segundos al cambiar de canción~~: descartado por el usuario; con música de fondo se volvería molesto. El cambio se ve en la carátula del notch cerrado.
 - ✅ Hito: al cambiar de canción el notch cerrado muestra la nueva carátula; los controles del panel funcionan; sin música sigue a 0 % de CPU y con música y el notch cerrado también (las barras las anima el servidor de ventanas).
 
-## Fase 3 — Cerebro (C-03, C-04, C-05)
-- ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor)
-- ⬜ Personalidad de Capri (prompt de sistema)
+## Fase 3 — Cerebro (C-03, C-04, C-05) 🟨
+Rama: `fase-3/cerebro`. Capri responde preguntas rápidas (comandos, atajos, errores simples), no trabajo de código a fondo. Decisiones: modelo local con Ollama (D-1), tono directo y nada meloso.
+- ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor): Ollama con Gemma 4 12B y un modo demo sin IA
+- ⬜ Personalidad de Capri (prompt de sistema) y memoria corta de la conversación
 - ⬜ Franja inferior del panel para lo que hay que leer o copiar (comandos, código, enlaces): se abre al terminar de hablar, con botón de copiar, y se cierra sola. Las respuestas solo habladas no abren el panel ("voz primero")
-- ⬜ Contexto de código: portapapeles y archivo arrastrado al notch
+- ⬜ Contexto: el portapapeles cuando la frase lo pide ("este error", "lo que copié"). ~~Archivo arrastrado al notch~~: pospuesto, para errores simples basta copiar
 - Hito: preguntas de terminal y de errores respondidas por voz
 
 ## Fase 4 — Acciones locales (C-06 a C-09)
