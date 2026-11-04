@@ -95,14 +95,14 @@ Sin clave, Capri usa un modelo local con [Ollama](https://ollama.com) (`gemma4:1
 Para que "pon tal canción" ponga a sonar el primer resultado (y no solo abra la búsqueda en Spotify), Capri usa la API web de Spotify para buscar. Hace falta una cuenta Premium, porque Spotify la exige al dueño de las apps de desarrollador:
 
 1. En [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), crea una app. Cualquier nombre y descripción sirven; en *Redirect URIs* pon `http://127.0.0.1:8888/callback` (Capri no la usa, pero el formulario la pide) y marca **Web API**.
-2. En los ajustes de la app, copia el *Client ID* y el *Client secret*, y guárdalos en el Llavero (cada comando pide el valor sin mostrarlo):
+2. En los ajustes de la app, copia el *Client ID* y el *Client secret*, y guárdalos en el Llavero desde la carpeta del proyecto, con la app ya empaquetada (cada comando pide el valor sin mostrarlo; `-T` deja que Capri los lea sin preguntar cada vez que se recompila):
 
 ```bash
-security add-generic-password -U -s com.rosvjames.capri -a spotify-id -w
+security add-generic-password -U -s com.rosvjames.capri -a spotify-id -T /usr/bin/security -T "$PWD/build/Capri.app" -w
 ```
 
 ```bash
-security add-generic-password -U -s com.rosvjames.capri -a spotify-secret -w
+security add-generic-password -U -s com.rosvjames.capri -a spotify-secret -T /usr/bin/security -T "$PWD/build/Capri.app" -w
 ```
 
 No hace falta iniciar sesión en Capri: solo busca, y la canción la reproduce la app de Spotify. Sin estas claves, o si la API falla, Capri abre la búsqueda en Spotify.

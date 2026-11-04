@@ -144,9 +144,12 @@ final class SpotifyRemote {
     }
 
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.
+    /// Solo se evita mostrar dos avisos del permiso a la vez. Con el permiso concedido, los scripts esperan su
+    /// turno en la cola: la carátula se pide mientras sigue el de "pon tal canción", que espera a que suene.
     private func run(_ source: String, ask: Bool, _ done: @escaping (String?) -> Void) {
-        guard Self.isRunning, !(ask && asking) else { return done(nil) }
-        if ask { asking = true }
+        let prompting = ask && permission != .granted
+        guard Self.isRunning, !(prompting && asking) else { return done(nil) }
+        if prompting { asking = true }
         let known = permission
         queue.async { [self] in
             var state = known == .granted ? .granted : SpotifyAutomation.state(ask: ask)
@@ -161,7 +164,7 @@ final class SpotifyRemote {
                 }
             }
             DispatchQueue.main.async { [self] in
-                if ask { asking = false }
+                if prompting { asking = false }
                 if let state, state != permission {
                     permission = state
                     log.notice("permiso de Spotify: \(String(describing: state), privacy: .public)")
