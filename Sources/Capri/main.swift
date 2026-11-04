@@ -36,12 +36,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // CAPRI_PREGUNTAR="texto" hace como si se lo hubieras dicho: precarga los modelos como al pulsar ⌘,
         // espera lo que tardarías en hablar y entonces piensa la respuesta y la dice.
-        if let text = ProcessInfo.processInfo.environment["CAPRI_PREGUNTAR"] {
-            speaker.prepare()
-            conversation.warmUp()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [listener] in
-                Logger(subsystem: "com.rosvjames.capri", category: "escucha").notice("pregunta simulada")
-                listener.onFinal(text)
+        // Varias preguntas separadas por | se hacen cada 20 s en la misma sesión, como en el uso normal.
+        if let questions = ProcessInfo.processInfo.environment["CAPRI_PREGUNTAR"]?.components(separatedBy: "|") {
+            for (i, text) in questions.enumerated() {
+                let start = DispatchTime.now() + Double(i) * 20
+                DispatchQueue.main.asyncAfter(deadline: start) { [speaker, conversation] in
+                    speaker.prepare()
+                    conversation.warmUp()
+                }
+                DispatchQueue.main.asyncAfter(deadline: start + 3) { [listener] in
+                    Logger(subsystem: "com.rosvjames.capri", category: "escucha").notice("pregunta simulada")
+                    listener.onFinal(text)
+                }
             }
         }
     }
