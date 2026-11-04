@@ -84,6 +84,8 @@ Genera y abre `build/Capri.app`. macOS solo concede micrófono, reconocimiento d
 
 Pasa el ratón por el notch para abrir el panel.
 
+Mientras Capri te escucha o te habla, el sonido de las demás apps baja y vuelve al terminar. Para eso macOS pide el permiso de grabación de audio del sistema: Capri no graba ni guarda ese audio, solo lo reproduce más bajo. Sin el permiso, todo funciona igual, sin atenuar.
+
 Para que piense con Claude, guarda una clave de la API de Anthropic en el Llavero (la pide sin mostrarla ni dejarla en el historial):
 
 ```bash
