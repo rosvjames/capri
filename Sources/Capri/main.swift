@@ -10,8 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let listener = SpeechListener()
     let speaker = Speaker()
     let music = MusicWatcher()
+    let ducker = AudioDucker()
     lazy var conversation = Conversation(actions: ActionRunner(music: music))
     private var accessibilityWatch: AnyCancellable?
+    private var duckingWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let notch = NotchController()
@@ -156,6 +158,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if speaker.isBusy { return speaker.stop() }
             listener.isListening ? end() : begin()
         }
+        // Mientras Capri escucha, piensa o habla, las demás apps suenan más bajo; al volver al reposo, como antes.
+        duckingWatch = model.$mode
+            .map { $0 != .idle }
+            .removeDuplicates()
+            .sink { [ducker] busy in busy ? ducker.duck() : ducker.release() }
         // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
         accessibilityWatch = model.permissions.$states
             .map { $0[.accessibility] == .granted }
