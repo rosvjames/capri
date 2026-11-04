@@ -59,11 +59,12 @@ Rama: `fase-2b/musica`, fusionada en `main`. Solo Spotify. Decisiones: notch cer
 
 ## Fase 3 — Cerebro (C-03, C-04, C-05) 🟨
 Rama: `fase-3/cerebro`. Capri responde preguntas rápidas (comandos, atajos, errores simples), no trabajo de código a fondo. Decisiones: modelo local con Ollama (D-1), tono directo y nada meloso.
-- ⬜ Cliente LLM detrás de un protocolo (para cambiar proveedor): Ollama con Gemma 4 12B y un modo demo sin IA
-- ⬜ Personalidad de Capri (prompt de sistema) y memoria corta de la conversación
-- ⬜ Franja inferior del panel para lo que hay que leer o copiar (comandos, código, enlaces): se abre al terminar de hablar, con botón de copiar, y se cierra sola. Las respuestas solo habladas no abren el panel ("voz primero")
-- ⬜ Contexto: el portapapeles cuando la frase lo pide ("este error", "lo que copié"). ~~Archivo arrastrado al notch~~: pospuesto, para errores simples basta copiar
-- Hito: preguntas de terminal y de errores respondidas por voz
+1. ✅ **Cliente LLM detrás de un protocolo** (`Brain.swift`, `OllamaBrain.swift`): Gemma 4 12B en Ollama, en el propio Mac y gratis. Elegido probando Gemma 3 4B, Qwen 3 8B y Gemma 4 12B con preguntas reales: el último es el único que acierta casi todo (~1 s por respuesta, ~9 GB mientras está cargado; Ollama lo descarga a los 10 min). `CAPRI_MODELO` o `defaults write com.rosvjames.capri modelo …` lo cambian; `CAPRI_LLM=demo` vuelve al eco. Si Ollama no está abierto, Capri lo dice.
+2. ✅ **Personalidad** (`Resources/capri-personalidad.md`): español de México, una o dos frases, directa y nada melosa; nunca lee comandos en voz alta y los atajos sí los dice. Tres ejemplos en el prompt corrigieron casi todos los fallos (atajos en el bloque de copiar, reiniciar con un atajo raro, `docker start`). **Memoria corta** (`Conversation.swift`): recuerda los últimos turnos y los olvida tras 10 min sin hablar.
+3. ✅ **Franja inferior** (`CopyStrip.swift`): si la respuesta trae un comando, código o enlace, el panel crece hacia abajo al terminar de hablar con el texto en monoespaciada y un botón Copiar. Se cierra sola a los 15 s, o al salir del panel después de pasar el ratón por ella. Las respuestas solo habladas no la abren ("voz primero"). `--snapshot … franja` la captura.
+4. ✅ **Portapapeles** (C-05): se envía solo si la frase lo pide ("este error", "lo que copié"); lo marcado como oculto por los gestores de contraseñas nunca se usa. ~~Archivo arrastrado al notch~~: pospuesto, para errores simples basta copiar.
+5. ✅ **Respuesta en streaming**: Gemma escribe y la voz empieza con la primera frase; Qwen entrega el audio por trozos (limpieza de ruido continua con FFmpeg, ganancia fija). De soltar el ⌘ derecho a oír a Capri: de 6–7 s a ~1,5 s con los modelos cargados. `--preguntar "…"` prueba respuestas en la terminal y `CAPRI_PREGUNTAR="…"` en la app, sin micrófono.
+- ⬜ Hito: preguntas de terminal y de errores respondidas por voz (falta la prueba del usuario con la app empaquetada)
 
 ## Fase 4 — Acciones locales (C-06 a C-09)
 - ⬜ Tool calling: el LLM elige herramienta, la app la ejecuta
