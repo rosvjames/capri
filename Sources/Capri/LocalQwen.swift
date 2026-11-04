@@ -1,13 +1,15 @@
-import Foundation
+import AVFoundation
 import os
 
 /// Puente local por JSONL: el proceso mantiene el modelo cargado entre respuestas.
-/// Ningún texto sale del Mac. Cancelar una generación termina el proceso para que no deje audio pendiente.
+/// El audio llega por trozos mientras se genera (el primero en ~0,7 s), así que Capri empieza a hablar
+/// sin esperar la frase entera. Ningún texto sale del Mac. Cancelar una generación termina el proceso
+/// para que no deje audio pendiente.
 final class LocalQwen {
     private struct Pending {
         let id: UUID
-        let output: URL
-        let completion: (Result<URL, Error>) -> Void
+        let onChunk: (AVAudioPCMBuffer) -> Void
+        let completion: (Result<Void, Error>) -> Void
     }
 
     private var process: Process?
@@ -19,14 +21,14 @@ final class LocalQwen {
     private var startedAt = Date()
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "qwen")
 
-    func generate(_ text: String, completion: @escaping (Result<URL, Error>) -> Void) {
+    /// `onChunk` recibe cada trozo de audio en orden; `completion`, el final de la frase o el error.
+    func generate(_ text: String, onChunk: @escaping (AVAudioPCMBuffer) -> Void, completion: @escaping (Result<Void, Error>) -> Void) {
         cancel()
         let id = UUID()
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("capri-qwen-\(id).wav")
         do {
             try startIfNeeded()
-            pending = Pending(id: id, output: url, completion: completion)
-            var line = try JSONSerialization.data(withJSONObject: ["id": id.uuidString, "text": text, "output": url.path])
+            pending = Pending(id: id, onChunk: onChunk, completion: completion)
+            var line = try JSONSerialization.data(withJSONObject: ["id": id.uuidString, "text": text])
             line.append(0x0A)
             try input?.write(contentsOf: line)
             let deadline = DispatchWorkItem { [weak self] in
@@ -38,7 +40,6 @@ final class LocalQwen {
         } catch {
             pending = nil
             shutdown()
-            try? FileManager.default.removeItem(at: url)
             completion(.failure(error))
         }
     }
@@ -49,10 +50,9 @@ final class LocalQwen {
     }
 
     func cancel() {
-        guard let request = pending else { return }
+        guard pending != nil else { return }
         pending = nil
         shutdown()
-        try? FileManager.default.removeItem(at: request.output)
     }
 
     func shutdown() {
@@ -141,22 +141,46 @@ final class LocalQwen {
                 return
             }
             guard let request = pending, object["id"] as? String == request.id.uuidString else { continue }
-            guard object["event"] as? String == "audio" else {
+            switch object["event"] as? String {
+            case "chunk":
+                guard let buffer = Self.buffer(from: object) else {
+                    fail("La voz local devolvió un trozo de audio no válido.")
+                    return
+                }
+                request.onChunk(buffer)
+            case "done":
+                pending = nil
+                timeout?.cancel()
+                timeout = nil
+                request.completion(.success(()))
+            default:
                 fail(object["error"] as? String ?? "No se pudo generar la voz.")
                 return
             }
-            pending = nil
-            timeout?.cancel()
-            timeout = nil
-            request.completion(.success(request.output))
         }
+    }
+
+    /// PCM de 16 bits en base64 → bloque de audio en coma flotante, como los del sintetizador del sistema.
+    private static func buffer(from object: [String: Any]) -> AVAudioPCMBuffer? {
+        guard let encoded = object["pcm"] as? String, let data = Data(base64Encoded: encoded),
+              let rate = object["rate"] as? Double,
+              let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(data.count / 2)),
+              let channel = buffer.floatChannelData?[0]
+        else { return nil }
+        buffer.frameLength = buffer.frameCapacity
+        data.withUnsafeBytes { raw in
+            for (i, sample) in raw.bindMemory(to: Int16.self).enumerated() {
+                channel[i] = Float(Int16(littleEndian: sample)) / 32767
+            }
+        }
+        return buffer
     }
 
     private func fail(_ message: String) {
         let request = pending
         pending = nil
         shutdown()
-        if let request { try? FileManager.default.removeItem(at: request.output) }
         log.error("\(message, privacy: .public)")
         request?.completion(.failure(NSError(domain: "Capri.Qwen", code: 2,
                                              userInfo: [NSLocalizedDescriptionKey: message])))

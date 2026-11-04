@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
+    let conversation = Conversation()
     let music = MusicWatcher()
     private var accessibilityWatch: AnyCancellable?
 
@@ -33,6 +34,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let text = ProcessInfo.processInfo.environment["CAPRI_DECIR"] {
             speaker.speak(text)
         }
+        // CAPRI_PREGUNTAR="texto" hace como si se lo hubieras dicho: precarga los modelos como al pulsar ⌘,
+        // espera lo que tardarías en hablar y entonces piensa la respuesta y la dice.
+        // Varias preguntas separadas por | se hacen cada 20 s en la misma sesión, como en el uso normal.
+        if let questions = ProcessInfo.processInfo.environment["CAPRI_PREGUNTAR"]?.components(separatedBy: "|") {
+            for (i, text) in questions.enumerated() {
+                let start = DispatchTime.now() + Double(i) * 20
+                DispatchQueue.main.asyncAfter(deadline: start) { [speaker, conversation] in
+                    speaker.prepare()
+                    conversation.warmUp()
+                }
+                DispatchQueue.main.asyncAfter(deadline: start + 3) { [listener] in
+                    Logger(subsystem: "com.rosvjames.capri", category: "escucha").notice("pregunta simulada")
+                    listener.onFinal(text)
+                }
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -40,9 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// ⌘ derecho mantenido (o el botón Hablar) → escuchar, transcribir y responder en voz.
-    /// El demo devuelve un saludo fijo para «hola Capri» y eco para el resto; aún no usa IA.
+    /// La respuesta la piensa el modelo local (`Conversation`); con CAPRI_LLM=demo, eco sin IA.
     private func installPushToTalk(_ notch: NotchController) {
-        let model = notch.model, listener = listener, speaker = speaker
+        let model = notch.model, listener = listener, speaker = speaker, conversation = conversation
         speaker.onPreparing = { model.mode = .thinking }
         speaker.onStart = {
             TalkingFace.shared.reset()
@@ -61,12 +78,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notch.setExpanded(true)
         }
         model.speechLevel = { speaker.level() }
+        // Antes de callarla: al detener la voz llega onFinish, que abriría la franja de la respuesta anterior.
+        let clearStrip = {
+            model.copyable = nil
+            model.showsStrip = false
+        }
         listener.onPartial = { model.transcript = $0 }
         listener.onLevel = { model.audioLevel = $0 }
         listener.onFinal = { text in
             model.transcript = text
-            model.mode = .idle
-            speaker.speak(DemoReply.response(to: text))
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return speaker.speak("No te escuché.")
+            }
+            model.mode = .thinking
+            // La primera frase empieza a sonar mientras el modelo escribe el resto.
+            var started = false
+            conversation.ask(text, onSentence: { sentence in
+                if !started {
+                    started = true
+                    speaker.begin()
+                }
+                speaker.add(sentence)
+            }, completion: { result in
+                switch result {
+                case .success(let reply):
+                    model.copyable = reply.copyable
+                    speaker.end()
+                case .failure(let error):
+                    let message = (error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo."
+                    if started {
+                        speaker.add(message)
+                        speaker.end()
+                    } else {
+                        speaker.speak(message)
+                    }
+                }
+            })
         }
         listener.onError = { message in
             model.transcript = message
@@ -74,8 +121,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let begin = {
             guard model.permissions.allGranted else { return model.permissions.requestMissing() }
+            clearStrip()
             speaker.stop()  // si estaba hablando, se calla para escucharte
+            conversation.cancel()
             speaker.prepare()
+            conversation.warmUp()
             model.transcript = ""
             model.mode = .listening
             listener.start()
@@ -97,6 +147,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard model.mode != .idle else { return }
             Logger(subsystem: "com.rosvjames.capri", category: "atajo").notice("Esc: se cancela \(String(describing: model.mode), privacy: .public)")
             listener.cancel()
+            conversation.cancel()
+            clearStrip()
             speaker.stop()
             model.mode = .idle
         }
@@ -128,12 +180,37 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     let expanded = !args.contains("colapsado")
     let elapsed = args.first { $0.hasPrefix("t=") }.flatMap { Double($0.dropFirst(2)) } ?? 0
     MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos"),
-                                       music: args.contains("musica")) }
+                                       music: args.contains("musica"),
+                                       strip: args.contains("franja2") ? "brew install node\nnode -v\nnpm -v"
+                                           : args.contains("franja") ? "docker run --name web -p 8080:80 nginx" : nil) }
     exit(0)
 }
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
     writeIconPreview(to: args[i + 1])
     exit(0)
+}
+// --preguntar "texto" ["seguimiento"…] imprime las respuestas, en la misma conversación, sin voz ni ventana.
+if let i = args.firstIndex(of: "--preguntar") {
+    let conversation = Conversation()
+    var questions = args[(i + 1)...].filter { !$0.hasPrefix("--") }[...]
+    func next() {
+        guard let question = questions.popFirst() else { exit(0) }
+        let start = Date()
+        print("\n> \(question)")
+        conversation.ask(question, onSentence: { sentence in
+            print(String(format: "[%.2f s] ", Date().timeIntervalSince(start)) + sentence)
+        }, completion: { result in
+            switch result {
+            case .success(let reply):
+                if let copyable = reply.copyable { print("[copiar]\n\(copyable)") }
+            case .failure(let error): print("error: \(error.localizedDescription)")
+            }
+            print(String(format: "(completa en %.2f s)", Date().timeIntervalSince(start)))
+            next()
+        })
+    }
+    next()
+    dispatchMain()
 }
 if args.contains("--timing-check") {
     printExposureSchedule()

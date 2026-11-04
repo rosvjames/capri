@@ -72,6 +72,17 @@ final class AssistantModel: ObservableObject {
     /// El panel abierto muestra la música en lugar de la columna de Capri: hay canción y Capri está en reposo.
     /// Si escucha, piensa o habla, el panel vuelve a ser suyo (C-29).
     var showsMusicPanel: Bool { nowPlaying != nil && mode == .idle }
+    /// Lo que hay que leer o copiar de la última respuesta (comando, código, enlace), o nil si solo era para oírse.
+    @Published var copyable: String?
+    /// La franja inferior con `copyable` está a la vista: aparece al terminar de hablar y se va con el panel (C-03).
+    @Published var showsStrip = false
+    /// Se acaba de pulsar Copiar en la franja: el botón dice "Copiado" un momento.
+    @Published var stripCopied = false
+    /// Alto que la franja añade al panel abierto.
+    var stripHeight: CGFloat {
+        guard showsStrip, let copyable else { return 0 }
+        return CopyStrip.height(for: copyable, geometry: geometry)
+    }
     /// Nivel del micrófono mientras escucha (0…1).
     @Published var audioLevel: CGFloat = 0
     /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
@@ -87,9 +98,10 @@ final class AssistantModel: ObservableObject {
         geometry = ExpandedGeometry(metrics: metrics)
     }
 
-    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para el panel abierto.
+    /// Tamaño de la ventana transparente: centrada en el notch y con sitio para el panel abierto y su franja más alta.
     var windowSize: CGSize {
         let halfWidth = max(-geometry.minX, geometry.maxX) + geometry.topRadius
-        return CGSize(width: 2 * (halfWidth + Layout.panelPadX), height: geometry.height + Layout.panelPadY)
+        return CGSize(width: 2 * (halfWidth + Layout.panelPadX),
+                      height: geometry.height + CopyStrip.maxHeight(geometry: geometry) + Layout.panelPadY)
     }
 }

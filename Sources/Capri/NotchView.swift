@@ -14,7 +14,7 @@ struct NotchView: View {
         let bottom: CGFloat = model.expanded ? g.bottomRadius : 12
         // El cuerpo visible es 2*top más angosto que el frame (las esquinas cóncavas).
         let w = (model.expanded ? g.bodyWidth : (active || showsMusic ? m.width + 2 * Layout.collapsedSide : m.width)) + 2 * top
-        let h = model.expanded ? g.height : m.height
+        let h = model.expanded ? g.height + model.stripHeight : m.height
         // Abierto, el panel sigue la maqueta v3 (no está centrado en la cámara); cerrado, se centra en ella.
         let dx = model.expanded ? g.offsetX : 0
 
@@ -41,6 +41,7 @@ struct NotchView: View {
         .animation(.spring(response: 0.45, dampingFraction: 0.78), value: model.expanded)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.mode)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showsMusic)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.showsStrip)
         .contentShape(Rectangle())
         .onTapGesture { if model.expanded { model.mode = model.mode.next } }
     }
@@ -99,11 +100,17 @@ struct NotchView: View {
     private func expandedContent(_ m: NotchMetrics, top: CGFloat) -> some View {
         Group {
             if model.expanded {
-                ZStack(alignment: .topLeading) {
-                    // Con música, su columna ocupa el sitio de la interfaz de Capri; Capri no se mueve (C-29).
-                    ExpandedPresenceView(model: model, permissions: model.permissions, showsInterface: !model.showsMusicPanel)
-                    if model.showsMusicPanel {
-                        MusicColumnView(model: model)
+                VStack(alignment: .leading, spacing: 0) {
+                    ZStack(alignment: .topLeading) {
+                        // Con música, su columna ocupa el sitio de la interfaz de Capri; Capri no se mueve (C-29).
+                        ExpandedPresenceView(model: model, permissions: model.permissions, showsInterface: !model.showsMusicPanel)
+                        if model.showsMusicPanel {
+                            MusicColumnView(model: model)
+                                .transition(.opacity)
+                        }
+                    }
+                    if model.showsStrip, let copyable = model.copyable {
+                        CopyStripView(model: model, text: copyable)
                             .transition(.opacity)
                     }
                 }

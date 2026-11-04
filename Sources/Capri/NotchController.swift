@@ -14,6 +14,10 @@ final class NotchController {
     private var fullscreen: FullscreenWatcher?
     /// Mientras Capri habla el panel no se cierra al apartar el ratón.
     private var holdOpen = false
+    /// La franja de copiar está abierta y el ratón aún no ha pasado por el panel: moverlo por fuera
+    /// (por ejemplo, hacia la terminal) no la cierra; se cierra sola o al salir del panel después de usarla.
+    private var stripUntilHover = false
+    static let stripDuration: TimeInterval = 15
     private let fixedState = ProcessInfo.processInfo.environment["CAPRI_ESTADO"] != nil
 
     init() {
@@ -71,10 +75,17 @@ final class NotchController {
     }
 
     /// Capri terminó de hablar: el panel se cierra en un momento, salvo que el ratón esté encima.
+    /// Si la respuesta trae algo que copiar, aparece la franja y el panel espera más antes de cerrarse.
     func speechEnded() {
         holdOpen = false
         guard model.expanded, !fixedState else { return }
-        scheduleCollapse(after: 1.5)
+        if model.copyable != nil {
+            model.showsStrip = true
+            stripUntilHover = true
+            scheduleCollapse(after: Self.stripDuration)
+        } else {
+            scheduleCollapse(after: 1.5)
+        }
     }
 
     private func scheduleCollapse(after delay: TimeInterval) {
@@ -106,13 +117,16 @@ final class NotchController {
         if value { model.permissions.refresh() } else {
             model.openedForSpeech = false
             if model.mode == .idle { model.transcript = "" }
+            model.showsStrip = false
+            model.copyable = nil
+            stripUntilHover = false
         }
     }
 
     private func hoverRect(expanded: Bool) -> NSRect {
         let m = model.metrics, g = model.geometry
         let w = expanded ? g.bodyWidth + 24 : m.width + 2 * Layout.collapsedSide
-        let h = expanded ? g.height + 10 : m.height + 2
+        let h = expanded ? g.height + model.stripHeight + 10 : m.height + 2
         let centerX = screen.frame.midX + m.centerOffset + (expanded ? g.offsetX : 0)
         return NSRect(x: centerX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
     }
@@ -122,7 +136,8 @@ final class NotchController {
         if model.expanded {
             if hoverRect(expanded: true).contains(p) {
                 collapseWork?.cancel()
-            } else if !holdOpen, collapseWork == nil || collapseWork?.isCancelled == true {
+                stripUntilHover = false
+            } else if !holdOpen, !stripUntilHover, collapseWork == nil || collapseWork?.isCancelled == true {
                 scheduleCollapse(after: 0.25)
             }
         } else if panel.isVisible, hoverRect(expanded: false).contains(p) {

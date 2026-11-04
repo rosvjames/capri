@@ -5,14 +5,15 @@ import SwiftUI
 //   Capri --snapshot ruta.png [modo] [colapsado] [sinpermisos] [musica] [t=ms]
 //       panel del notch en un modo (expandido por defecto), con las métricas del notch real;
 //       t=ms muestra el loop de Capri a esos milisegundos de haberse abierto;
-//       musica simula una canción sonando con una carátula sintética (no usa la de Spotify)
+//       musica simula una canción sonando con una carátula sintética (no usa la de Spotify);
+//       franja muestra la franja de copiar con un comando de ejemplo (franja2: varias líneas)
 //   Capri --gallery ruta.png                       las 9 expresiones de A-002 en cuadrícula 3×3
 //   Capri --icon ruta.png                          icono de la barra de menús a 18, 36 y 144 px, en barra clara y oscura
 //   Capri --timing-check                           imprime los cambios de dibujo que programa el reproductor (2 loops)
 
 @MainActor
 func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, elapsedMs: Double = 0, withoutPermissions: Bool = false,
-                   music: Bool = false) {
+                   music: Bool = false, strip: String? = nil) {
     let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
     let model = AssistantModel(metrics: screen.map(NotchMetrics.of) ?? NotchMetrics(width: 185, height: 32))
     _ = NotchFrames.shared  // decodificar antes de fijar la hora, para que el instante capturado sea el pedido
@@ -27,6 +28,8 @@ func writeSnapshot(to path: String, mode: AssistantMode, expanded: Bool = true, 
                                       album: "Álbum", isPlaying: true)
         model.artwork = syntheticArtwork()
     }
+    model.copyable = strip
+    model.showsStrip = strip != nil
     let size = model.windowSize
     let view = NotchView(model: model)
         .frame(width: size.width, height: size.height)
