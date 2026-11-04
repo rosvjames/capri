@@ -19,8 +19,10 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 WIRE = sys.stdout
-# Cada cuánto entrega Qwen audio nuevo (s): el primer trozo llega en ~0,8 s en vez de esperar la frase entera.
-STREAMING_INTERVAL = 0.6
+# Cada cuánto entrega Qwen audio nuevo (s): el primer trozo llega en ~0,4 s en vez de esperar la frase entera
+# (con 0,6 s llegaba en ~0,7 s). Genera al doble de la velocidad a la que se oye, así que los trozos
+# cortos no dejan huecos; la app además espera a tener 0,3 s antes de empezar a sonar.
+STREAMING_INTERVAL = 0.3
 # Solo ganancia constante: acerca el volumen al de las muestras elegidas sin tocar silencios, timbre,
 # dinámica, tono ni velocidad. Es fija porque el audio llega por trozos y el primero suele ser más suave
 # que el resto: calcularla con él saturaba. Antes, con la frase entera, salía entre +12 y +15 dB

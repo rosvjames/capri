@@ -32,6 +32,13 @@ final class Speaker {
     /// Identifica la frase en curso: los avisos de una frase cancelada se ignoran.
     private var utteranceID = 0
     private var pendingBuffers = 0
+    /// Audio recibido de la respuesta en curso antes de empezar a sonar (s).
+    private var buffered: TimeInterval = 0
+    /// Lo que se acumula antes de empezar a sonar: el primer trozo de Qwen es corto y, si la GPU está ocupada
+    /// con el modelo de lenguaje, el siguiente podría tardar más de lo que dura y dejar un hueco.
+    private static let prebuffer: TimeInterval = 0.3
+    /// Hay un reintento de encender el audio en marcha: los trozos que llegan mientras tanto no lanzan otro.
+    private var startPending = false
     /// Segmentos de la respuesta en curso que faltan por generar, en orden.
     private var segments: [String] = []
     /// Hay un segmento generándose (Qwen) o el texto completo sintetizándose (Paulina).
@@ -62,6 +69,8 @@ final class Speaker {
         envelope = []
         carry = []
         pendingBuffers = 0
+        buffered = 0
+        startPending = false
         segments = []
         generating = false
         inputEnded = false
@@ -98,6 +107,7 @@ final class Speaker {
         let text = segments.removeFirst()
         let id = utteranceID
         generating = true
+        log.notice("voz: segmento de \(text.count) caracteres (\(self.segments.count) en cola)")
 
         // El saludo del demo usa una toma concreta para mantener el registro elegido,
         // sin volver a variar la interpretación ni alterar las otras respuestas.
@@ -122,6 +132,8 @@ final class Speaker {
     private func segmentGenerated(id: Int) {
         guard id == utteranceID else { return }
         generating = false
+        // Un segmento más corto que el margen: no llegará más audio suyo, así que empieza ya.
+        if !isSpeaking, !startPending, pendingBuffers > 0 { startPlayback() }
         generateNext()
         finishIfDone(id: id)
     }
@@ -147,8 +159,28 @@ final class Speaker {
     }
 
     /// Se llama al empezar a escuchar: el modelo carga mientras hablas y la respuesta solo espera la generación.
+    /// La salida de audio también se enciende ya, con la GPU libre: con el modelo de lenguaje y Qwen
+    /// trabajando a la vez, encenderla justo al empezar a sonar fallaba a menudo (error 'what' de Core Audio).
     func prepare() {
-        if !usePaulina { qwen.warmUp() }
+        guard !usePaulina else { return }
+        qwen.warmUp()
+        engineStopWork?.cancel()
+        if connectedFormat == nil, let format = AVAudioFormat(standardFormatWithSampleRate: 24_000, channels: 1) {
+            connect(format)
+        }
+        do {
+            if !engine.isRunning { try engine.start() }
+        } catch {
+            log.error("no se pudo encender el audio al prepararse: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Qwen entrega 24 kHz y Paulina 22,05 kHz: el reproductor se conecta con el formato de lo que va a sonar.
+    private func connect(_ format: AVAudioFormat) {
+        engine.disconnectNodeOutput(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        connectedFormat = format
+        sampleRate = format.sampleRate
     }
 
     private func playFile(_ url: URL, id: Int) {
@@ -186,7 +218,7 @@ final class Speaker {
     private func scheduleEngineStop() {
         engineStopWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
-            guard let self, !self.isSpeaking else { return }
+            guard let self, !self.isBusy else { return }
             self.engine.stop()
         }
         engineStopWork = work
@@ -223,12 +255,7 @@ final class Speaker {
 
     private func receive(_ buffer: AVAudioPCMBuffer, id: Int) {
         guard id == utteranceID else { return }
-        if connectedFormat != buffer.format {
-            engine.disconnectNodeOutput(player)
-            engine.connect(player, to: engine.mainMixerNode, format: buffer.format)
-            connectedFormat = buffer.format
-            sampleRate = buffer.format.sampleRate
-        }
+        if connectedFormat != buffer.format { connect(buffer.format) }
         analyze(buffer)
         pendingBuffers += 1
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
@@ -238,19 +265,33 @@ final class Speaker {
                 self.finishIfDone(id: id)
             }
         }
-        if !isSpeaking {
-            engineStopWork?.cancel()
-            do {
-                if !engine.isRunning { try engine.start() }
-                player.play()
-                isSpeaking = true
-                isPreparing = false
-                log.notice("empieza a sonar")
-                onStart()
-            } catch {
-                log.error("no se pudo reproducir la voz: \(error.localizedDescription, privacy: .public)")
-                failed(error)
+        buffered += Double(buffer.frameLength) / buffer.format.sampleRate
+        if !isSpeaking, !startPending, buffered >= Self.prebuffer { startPlayback() }
+    }
+
+    /// Con la GPU ocupada por el modelo de lenguaje y Qwen a la vez, encender la salida de audio puede fallar
+    /// (error 'what' de Core Audio) y a los pocos milisegundos funciona: se reintenta antes de darse por vencida.
+    private func startPlayback(attempt: Int = 1) {
+        engineStopWork?.cancel()
+        startPending = false
+        do {
+            if !engine.isRunning { try engine.start() }
+            player.play()
+            isSpeaking = true
+            isPreparing = false
+            log.notice("empieza a sonar\(attempt > 1 ? " (intento \(attempt))" : "", privacy: .public)")
+            onStart()
+        } catch where attempt < 5 {
+            log.notice("no se pudo encender el audio (intento \(attempt)): \(error.localizedDescription, privacy: .public)")
+            let id = utteranceID
+            startPending = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self, id == self.utteranceID, !self.isSpeaking else { return }
+                self.startPlayback(attempt: attempt + 1)
             }
+        } catch {
+            log.error("no se pudo reproducir la voz: \(error.localizedDescription, privacy: .public)")
+            failed(error)
         }
     }
 
