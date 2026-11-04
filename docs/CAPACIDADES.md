@@ -53,7 +53,7 @@ Origen de C-10 y C-25 a C-28: análisis de otros proyectos en `docs/REFERENCIAS.
 
 | # | Pregunta | Decisión |
 |---|---|---|
-| D-1 | ¿Qué LLM? | **Modelo local con Ollama** (Gemma 4 12B: ~1 s por respuesta en un M1 Max, gratis), detrás de un protocolo. Claude API (Haiku) queda como respaldo, con un tope de ~US$5/mes. Revisado 2026-11-03: Capri es para preguntas rápidas, no para trabajo de código a fondo |
+| D-1 | ¿Qué LLM? | **Claude por API**, detrás de un protocolo (revisado 2026-11-04). El modelo local (Gemma 4 12B con Ollama) funcionaba, pero ocupaba 10–17 GB de RAM junto a la voz y el Mac mandaba memoria al disco; Capri convive con muchas apps abiertas. Hoy, Haiku 4.5 por el AI Gateway de Astropods (créditos sobrantes, clave de 24 h); a la larga, clave propia de Anthropic con Haiku 5.5 (~US$0,25/mes), con un tope de ~US$5/mes. Gemma queda como opción sin internet. Capri es para preguntas rápidas, no para trabajo de código a fondo |
 | D-2 | ¿Cómo se activa? | **⌘ derecho mantenido** (push-to-talk): hablas mientras lo mantienes y al soltar Capri responde. También el botón Hablar del panel. Palabra de activación en v2 (C-20). Decidido 2026-11-02 |
 | D-3 | ¿Qué app de música? | Spotify |
 | D-4 | ¿Reconocimiento de voz? | Speech de Apple (nativo, gratis) en v1 |
