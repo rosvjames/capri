@@ -13,11 +13,18 @@ final class SpeechListener {
     var onError: (String) -> Void = { _ in }
 
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-MX"))
-    private let engine = AVAudioEngine()
+    /// Uno nuevo en cada escucha: el formato del micrófono puede cambiar entre escuchas (al volver de la
+    /// suspensión, al conectar otro dispositivo o al crear el de la atenuación) y un motor viejo conserva el
+    /// anterior. Instalar la escucha con un formato que ya no coincide cierra la app (excepción de AVFAudio).
+    private var engine = AVAudioEngine()
+    private var configurationObserver: NSObjectProtocol?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var lastText = ""
     private var finished = true
+    /// Identifica cada escucha: la espera del texto final de una escucha anterior no debe cortar la actual
+    /// (pasaba al soltar ⌘ y volver a pulsarlo antes de 2 s).
+    private var session = 0
     private var lastLevelUpdate = Date.distantPast
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "escucha")
     /// Con CAPRI_DEBUG_TRANSCRIPT=1 el texto reconocido aparece en el registro (por defecto se oculta).
@@ -32,6 +39,7 @@ final class SpeechListener {
             return
         }
         finished = false
+        session += 1
         lastText = ""
 
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -41,26 +49,55 @@ final class SpeechListener {
         if onDevice { request.requiresOnDeviceRecognition = true }
         self.request = request
 
+        let current = session
+        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            // Los avisos de una tarea anterior (su cancelación llega tarde) no tocan la escucha actual.
+            DispatchQueue.main.async {
+                guard let self, self.session == current else { return }
+                self.handle(result: result, error: error)
+            }
+        }
+
+        if startAudio(request) {
+            log.notice("escuchando (en el dispositivo: \(onDevice, privacy: .public))")
+        } else {
+            teardown()
+            finished = true
+            onError("No pude abrir el micrófono.")
+        }
+    }
+
+    /// Abre el micrófono con un motor nuevo y comprueba antes el formato. Si macOS cambia la configuración de
+    /// audio a mitad de la escucha, el motor se detiene: se vuelve a abrir y la misma petición sigue recibiendo.
+    private func startAudio(_ request: SFSpeechAudioBufferRecognitionRequest) -> Bool {
+        stopAudio()
+        engine = AVAudioEngine()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
+        let hardware = input.inputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0, format.sampleRate == hardware.sampleRate else {
+            log.error("formato del micrófono no válido: \(format.sampleRate) Hz frente a \(hardware.sampleRate) Hz")
+            return false
+        }
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             request.append(buffer)
             self?.reportLevel(buffer)
         }
-
-        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            DispatchQueue.main.async { self?.handle(result: result, error: error) }
+        let current = session
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            guard let self, !self.finished, self.session == current, let request = self.request else { return }
+            self.log.notice("cambió la configuración de audio: se vuelve a abrir el micrófono")
+            if !self.startAudio(request) { self.finish() }
         }
-
         do {
             engine.prepare()
             try engine.start()
-            log.notice("escuchando (en el dispositivo: \(onDevice, privacy: .public))")
+            return true
         } catch {
             log.error("no se pudo abrir el micrófono: \(error.localizedDescription, privacy: .public)")
-            teardown()
-            finished = true
-            onError("No pude abrir el micrófono.")
+            return false
         }
     }
 
@@ -69,8 +106,9 @@ final class SpeechListener {
         guard !finished else { return }
         stopAudio()
         request?.endAudio()
+        let current = session
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self, !self.finished else { return }
+            guard let self, !self.finished, self.session == current else { return }
             self.log.notice("sin texto final a tiempo; se usa el último parcial")
             self.finish()
         }
@@ -78,7 +116,6 @@ final class SpeechListener {
 
     func cancel() {
         guard !finished else { return }
-        task?.cancel()
         teardown()
         finished = true
         log.notice("cancelado")
@@ -118,13 +155,19 @@ final class SpeechListener {
     }
 
     private func stopAudio() {
+        configurationObserver.map(NotificationCenter.default.removeObserver)
+        configurationObserver = nil
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         DispatchQueue.main.async { self.onLevel(0) }
     }
 
+    /// Cierra también la tarea de reconocimiento: si queda abierta, ocupa el reconocedor del Mac y las
+    /// escuchas siguientes terminan al instante con "No speech detected".
     private func teardown() {
         stopAudio()
+        request?.endAudio()
+        task?.cancel()
         task = nil
         request = nil
     }

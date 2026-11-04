@@ -53,7 +53,11 @@ enum Layout {
 }
 
 final class AssistantModel: ObservableObject {
-    @Published var mode: AssistantMode = .idle
+    @Published var mode: AssistantMode = .idle {
+        didSet { activities.set(.conversation, mode != .idle) }
+    }
+    /// Qué ocupa el notch si coinciden varias cosas (música, conversación y, más adelante, avisos).
+    private(set) var activities = ActivityBoard()
     @Published var expanded = false {
         didSet { if expanded && !oldValue { expandedAt = Date() } }
     }
@@ -64,14 +68,16 @@ final class AssistantModel: ObservableObject {
     /// El panel se abrió solo porque Capri habla: entonces no se muestra lo que dictaste ("voz primero").
     @Published var openedForSpeech = false
     /// Lo que suena en Spotify, o nil si no suena ni está en pausa (C-29).
-    @Published var nowPlaying: NowPlaying?
+    @Published var nowPlaying: NowPlaying? {
+        didSet { activities.set(.music, nowPlaying != nil) }
+    }
     /// Carátula de `nowPlaying`, ya reducida; nil mientras llega o si no se pudo conseguir.
     @Published var artwork: NSImage?
     /// Controles de Spotify desde el panel; lo conecta AppDelegate.
     var musicCommand: (MusicCommand) -> Void = { _ in }
     /// El panel abierto muestra la música en lugar de la columna de Capri: hay canción y Capri está en reposo.
-    /// Si escucha, piensa o habla, el panel vuelve a ser suyo (C-29).
-    var showsMusicPanel: Bool { nowPlaying != nil && mode == .idle }
+    /// Si escucha, piensa o habla, el panel vuelve a ser suyo (C-29): la conversación tiene más prioridad.
+    var showsMusicPanel: Bool { activities.foreground == .music }
     /// Lo que hay que leer o copiar de la última respuesta (comando, código, enlace), o nil si solo era para oírse.
     @Published var copyable: String?
     /// La franja inferior con `copyable` está a la vista: aparece al terminar de hablar y se va con el panel (C-03).

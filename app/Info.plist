@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0</string>
+	<string>0.4.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Capri le pide a Spotify la carátula de la canción y usa sus controles (anterior, pausa, siguiente).</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Capri baja el volumen de las demás apps mientras te escucha o te habla. No graba ni guarda ese audio.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>

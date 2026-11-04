@@ -1,9 +1,33 @@
 import Foundation
 
 /// Un turno de la conversación, en el formato de los modelos de chat.
-struct ChatMessage: Codable {
+struct ChatMessage {
     let role: String
     let content: String
+    /// En un turno de Capri, la herramienta que usó; `content` es entonces la confirmación. Claude lo recibe
+    /// como una llamada a la herramienta con su resultado: si lo viera como texto ("Sigue."), podría imitar la
+    /// confirmación sin usar la herramienta. Los modelos sin herramientas solo ven el texto.
+    var action: ToolCall? = nil
+}
+
+/// Herramienta que eligió el modelo, con sus datos en JSON tal como llegaron. Se valida antes de usarla (`Tools`).
+struct ToolCall: Sendable {
+    /// El identificador que le da la API, o uno local si la orden llegó por la vía rápida.
+    let id: String
+    let name: String
+    let arguments: Data
+
+    static func local(name: String, input: [String: Any]) -> ToolCall? {
+        guard let data = try? JSONSerialization.data(withJSONObject: input) else { return nil }
+        let id = "toolu_local_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(20).lowercased()
+        return ToolCall(id: id, name: name, arguments: data)
+    }
+}
+
+/// Lo que escribió el modelo: texto y, si eligió una herramienta, cuál.
+struct BrainOutput: Sendable {
+    let text: String
+    var toolCall: ToolCall?
 }
 
 /// El modelo que piensa las respuestas, detrás de un protocolo para poder cambiar de proveedor (D-1).
@@ -12,10 +36,11 @@ protocol Brain: AnyObject {
     /// Mientras James habla: carga el modelo y lee ya el principio de la conversación (personalidad e
     /// historial), para que al llegar la pregunta solo quede leer esta y escribir la respuesta.
     func warmUp(with messages: [ChatMessage])
-    /// `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes de que termine;
-    /// `completion`, el texto completo.
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void)
+    /// `tools` son las herramientas que puede elegir (formato de la API de Anthropic); un modelo que no las
+    /// admite las ignora. `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes
+    /// de que termine; `completion`, el texto completo y la herramienta elegida.
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void)
     func cancel()
 }
 
@@ -52,10 +77,10 @@ final class DemoBrain: Brain {
     func warmUp(with messages: [ChatMessage]) {}
     func cancel() {}
 
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void) {
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void) {
         let question = messages.last { $0.role == "user" }?.content ?? ""
         let text = question.components(separatedBy: "</portapapeles>").last ?? question
-        DispatchQueue.main.async { completion(.success(DemoReply.response(to: text))) }
+        DispatchQueue.main.async { completion(.success(BrainOutput(text: DemoReply.response(to: text)))) }
     }
 }

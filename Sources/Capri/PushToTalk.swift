@@ -59,8 +59,12 @@ final class PushToTalk {
         }
     }
 
+    /// Modificadores que cuentan como "otra tecla pulsada". El Bloq Mayús no: es un estado, no una tecla
+    /// mantenida, y con él activado el atajo dejaba de funcionar. La tecla fn y el teclado numérico tampoco.
+    private static let heldModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+
     private func handleFlags(_ event: NSEvent) {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let flags = event.modifierFlags.intersection(Self.heldModifiers)
         let rightCommandDown = event.modifierFlags.rawValue & Self.rightCommandMask != 0
 
         if event.keyCode == Self.rightCommandKeyCode {

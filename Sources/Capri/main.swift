@@ -9,9 +9,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
-    let conversation = Conversation()
     let music = MusicWatcher()
+    let ducker = AudioDucker()
+    lazy var conversation = Conversation(actions: ActionRunner(music: music))
     private var accessibilityWatch: AnyCancellable?
+    private var duckingWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let notch = NotchController()
@@ -127,8 +129,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speaker.prepare()
             conversation.warmUp()
             model.transcript = ""
-            model.mode = .listening
+            // Primero el micrófono y después el cambio de estado, que pone en marcha la atenuación: crear su
+            // dispositivo de audio reconfigura el audio del Mac y, si coincide con abrir el micrófono, el
+            // formato que se lee puede no ser el real.
             listener.start()
+            guard listener.isListening else { return }
+            model.mode = .listening
         }
         let end = {
             guard listener.isListening else { return }
@@ -156,6 +162,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if speaker.isBusy { return speaker.stop() }
             listener.isListening ? end() : begin()
         }
+        // Mientras Capri escucha, piensa o habla, las demás apps suenan más bajo; al volver al reposo, como antes.
+        duckingWatch = model.$mode
+            .map { $0 != .idle }
+            .removeDuplicates()
+            .sink { [ducker] busy in busy ? ducker.duck() : ducker.release() }
         // Los monitores de teclado solo reciben eventos con accesibilidad: se (re)instalan al concederla.
         accessibilityWatch = model.permissions.$states
             .map { $0[.accessibility] == .granted }
@@ -191,7 +202,10 @@ if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
 }
 // --preguntar "texto" ["seguimiento"…] imprime las respuestas, en la misma conversación, sin voz ni ventana.
 if let i = args.firstIndex(of: "--preguntar") {
-    let conversation = Conversation()
+    // Las acciones se hacen de verdad ("abre Safari" lo abre). Lo que suena se lee de Spotify si ya hay permiso.
+    let music = MusicWatcher()
+    music.start()
+    let conversation = Conversation(actions: ActionRunner(music: music))
     var questions = args[(i + 1)...].filter { !$0.hasPrefix("--") }[...]
     func next() {
         guard let question = questions.popFirst() else { exit(0) }
@@ -211,6 +225,17 @@ if let i = args.firstIndex(of: "--preguntar") {
     }
     next()
     dispatchMain()
+}
+// --entender "frase"… imprime qué acción reconoce la vía rápida, sin hacerla; "—" si la frase iría al modelo.
+if let i = args.firstIndex(of: "--entender") {
+    let apps = AppCatalog()
+    for sentence in args[(i + 1)...] {
+        let action = QuickCommands.match(sentence, apps: apps)
+        let app = { if case .openApp(let name)? = action { apps.find(name)?.url.path ?? "" } else { "" } }()
+        print("\(sentence) → \(action.map { String(describing: $0) } ?? "—") \(app)")
+    }
+    print(SpokenTime.time(Date()), SpokenTime.date(Date()), SpokenTime.context())
+    exit(0)
 }
 if args.contains("--timing-check") {
     printExposureSchedule()
