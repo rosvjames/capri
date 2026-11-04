@@ -9,8 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
-    let conversation = Conversation()
     let music = MusicWatcher()
+    lazy var conversation = Conversation(actions: ActionRunner(music: music))
     private var accessibilityWatch: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -191,7 +191,10 @@ if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
 }
 // --preguntar "texto" ["seguimiento"…] imprime las respuestas, en la misma conversación, sin voz ni ventana.
 if let i = args.firstIndex(of: "--preguntar") {
-    let conversation = Conversation()
+    // Las acciones se hacen de verdad ("abre Safari" lo abre). Lo que suena se lee de Spotify si ya hay permiso.
+    let music = MusicWatcher()
+    music.start()
+    let conversation = Conversation(actions: ActionRunner(music: music))
     var questions = args[(i + 1)...].filter { !$0.hasPrefix("--") }[...]
     func next() {
         guard let question = questions.popFirst() else { exit(0) }
@@ -211,6 +214,17 @@ if let i = args.firstIndex(of: "--preguntar") {
     }
     next()
     dispatchMain()
+}
+// --entender "frase"… imprime qué acción reconoce la vía rápida, sin hacerla; "—" si la frase iría al modelo.
+if let i = args.firstIndex(of: "--entender") {
+    let apps = AppCatalog()
+    for sentence in args[(i + 1)...] {
+        let action = QuickCommands.match(sentence, apps: apps)
+        let app = { if case .openApp(let name)? = action { apps.find(name)?.url.path ?? "" } else { "" } }()
+        print("\(sentence) → \(action.map { String(describing: $0) } ?? "—") \(app)")
+    }
+    print(SpokenTime.time(Date()), SpokenTime.date(Date()), SpokenTime.context())
+    exit(0)
 }
 if args.contains("--timing-check") {
     printExposureSchedule()

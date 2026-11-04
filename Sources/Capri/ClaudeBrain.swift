@@ -90,20 +90,24 @@ final class ClaudeBrain: Brain {
         URLSession.shared.dataTask(with: request).resume()
     }
 
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void) {
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void) {
         cancel()
         guard let key = apiKey() else {
             completion(.failure(BrainError(spoken: "Me falta la clave de Claude en el Llavero.")))
             return
         }
-        guard let request = request(messages, key: key) else {
+        guard let request = request(messages, tools: tools, key: key) else {
             completion(.failure(BrainError(spoken: "No pude preparar la pregunta.")))
             return
         }
         let start = Date()
         task = Task { [log, model, access] in
             var text = ""
+            // Herramienta elegida: nombre y JSON de sus datos, que llega por trozos (input_json_delta).
+            var toolName: String?
+            var toolIndex: Int?
+            var toolJSON = ""
             do {
                 let (bytes, response) = try await URLSession.shared.bytes(for: request)
                 if let status = (response as? HTTPURLResponse)?.statusCode, status != 200 {
@@ -112,13 +116,33 @@ final class ClaudeBrain: Brain {
                     throw Self.httpError(status: status, body: body, access: access)
                 }
                 // Eventos SSE: solo importan las líneas "data:"; el texto llega en content_block_delta.
+                // Una herramienta abre su bloque con content_block_start (tipo tool_use, con su nombre) y manda
+                // sus datos como input_json_delta. Solo se usa la primera.
                 for try await line in bytes.lines {
                     guard line.hasPrefix("data:"),
                           let json = try? JSONSerialization.jsonObject(with: Data(line.dropFirst(5).utf8)) as? [String: Any]
                     else { continue }
                     switch json["type"] as? String {
+                    case "message_start":
+                        // Para medir el costo (personalidad, herramientas, historial y pregunta). La API de
+                        // Anthropic lo manda aquí; el gateway, en message_delta.
+                        Self.logUsage((json["message"] as? [String: Any])?["usage"], model: model)
+                    case "content_block_start":
+                        guard toolName == nil, let block = json["content_block"] as? [String: Any],
+                              block["type"] as? String == "tool_use", let name = block["name"] as? String else { continue }
+                        toolName = name
+                        toolIndex = json["index"] as? Int
+                        log.notice("\(model, privacy: .public): herramienta \(name, privacy: .public) en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
                     case "content_block_delta":
-                        guard let delta = json["delta"] as? [String: Any], delta["type"] as? String == "text_delta",
+                        guard let delta = json["delta"] as? [String: Any] else { continue }
+                        if delta["type"] as? String == "input_json_delta" {
+                            if toolName != nil, json["index"] as? Int == toolIndex, toolJSON.count < 4_000 {
+                                toolJSON += delta["partial_json"] as? String ?? ""
+                            }
+                            continue
+                        }
+                        // Lo que escriba después de elegir una herramienta no se dice: la confirmación es de Capri.
+                        guard toolName == nil, delta["type"] as? String == "text_delta",
                               let piece = delta["text"] as? String, !piece.isEmpty else { continue }
                         if text.isEmpty {
                             log.notice("\(model, privacy: .public): primer texto en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
@@ -127,6 +151,7 @@ final class ClaudeBrain: Brain {
                         let partial = text
                         await MainActor.run { if !Task.isCancelled { onPartial(partial) } }
                     case "message_delta":
+                        Self.logUsage(json["usage"], model: model)
                         if (json["delta"] as? [String: Any])?["stop_reason"] as? String == "refusal", text.isEmpty {
                             throw BrainError(spoken: "Eso no te lo puedo responder.")
                         }
@@ -139,7 +164,9 @@ final class ClaudeBrain: Brain {
                     }
                 }
                 log.notice("\(model, privacy: .public) respondió en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
-                let result = text
+                // Sin datos, la API manda el JSON vacío como "" en vez de "{}".
+                let call = toolName.map { ToolCall(name: $0, arguments: Data((toolJSON.isEmpty ? "{}" : toolJSON).utf8)) }
+                let result = BrainOutput(text: text, toolCall: call)
                 await MainActor.run { if !Task.isCancelled { completion(.success(result)) } }
             } catch {
                 let failure = Self.describe(error)
@@ -153,7 +180,7 @@ final class ClaudeBrain: Brain {
         task = nil
     }
 
-    private func request(_ messages: [ChatMessage], key: String) -> URLRequest? {
+    private func request(_ messages: [ChatMessage], tools: [[String: Any]], key: String) -> URLRequest? {
         let system = messages.filter { $0.role == "system" }.map(\.content).joined(separator: "\n\n")
         var body: [String: Any] = [
             "model": model,
@@ -163,6 +190,7 @@ final class ClaudeBrain: Brain {
             "system": system,
             "messages": messages.filter { $0.role != "system" }.map { ["role": $0.role, "content": $0.content] },
         ]
+        if !tools.isEmpty { body["tools"] = tools }
         guard let url = URL(string: access.baseURL + "/v1/messages") else { return nil }
         var request = URLRequest(url: url, timeoutInterval: 30)
         request.httpMethod = "POST"
@@ -190,6 +218,12 @@ final class ClaudeBrain: Brain {
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    private static func logUsage(_ usage: Any?, model: String) {
+        guard let usage = usage as? [String: Any], let input = usage["input_tokens"] as? Int, input > 0 else { return }
+        let output = usage["output_tokens"] as? Int ?? 0
+        Logger(subsystem: "com.rosvjames.capri", category: "llm").notice("\(model, privacy: .public): \(input) tokens de entrada, \(output) de salida")
     }
 
     /// Error HTTP de la API → frase corta para decir en voz; el detalle queda en el registro.

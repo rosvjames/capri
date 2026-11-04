@@ -5,6 +5,7 @@ import os
 /// Gemma 4 12B responde una pregunta corta en ~1–2 s en un M1 Max y ocupa ~8 GB mientras está cargado;
 /// Ollama lo descarga de la memoria 10 minutos después de la última pregunta.
 /// La respuesta llega en streaming: la primera frase está lista en una fracción de ese tiempo.
+/// Sin herramientas: con Gemma, las acciones solo funcionan por la vía rápida (`QuickCommands`).
 final class OllamaBrain: Brain {
     let model: String
     private let endpoint = URL(string: "http://127.0.0.1:11434/api/chat")!
@@ -39,8 +40,8 @@ final class OllamaBrain: Brain {
         }.resume()
     }
 
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void) {
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void) {
         cancel()
         let request = request([
             "model": model,
@@ -73,7 +74,7 @@ final class OllamaBrain: Brain {
                     if json["done"] as? Bool == true { break }
                 }
                 log.notice("\(model, privacy: .public) respondió en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
-                let result = text
+                let result = BrainOutput(text: text)
                 await MainActor.run { if !Task.isCancelled { completion(.success(result)) } }
             } catch {
                 let failure = Self.describe(error, model: model)

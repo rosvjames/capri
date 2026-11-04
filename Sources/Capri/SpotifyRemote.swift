@@ -2,13 +2,15 @@ import AppKit
 import os
 
 enum MusicCommand {
-    case previous, playPause, next
+    case previous, playPause, next, pause, play
 
     fileprivate var script: String {
         switch self {
         case .previous: "previous track"
         case .playPause: "playpause"
         case .next: "next track"
+        case .pause: "pause"
+        case .play: "play"
         }
     }
 }
@@ -76,6 +78,32 @@ final class SpotifyRemote {
             end if
             return ""
             """, ask: true) { _ in }
+    }
+
+    /// Como `send`, pero devuelve el estado del reproductor después de la orden ("playing", "paused"), para
+    /// comprobar que se cumplió; nil si Spotify está cerrado o no hay permiso. `done` llega en el hilo principal.
+    /// Spotify cambia de estado unos milisegundos después de la orden: con pausa y reproducir se espera hasta 1 s.
+    func control(_ command: MusicCommand, _ done: @escaping (String?) -> Void) {
+        let expected = switch command {
+        case .pause: "paused"
+        case .play: "playing"
+        default: ""
+        }
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    \(command.script)
+                    if "\(expected)" is not "" then
+                        repeat 10 times
+                            if (player state as string) is "\(expected)" then exit repeat
+                            delay 0.1
+                        end repeat
+                    end if
+                    return player state as string
+                end tell
+            end if
+            return ""
+            """, ask: true) { done($0?.isEmpty == false ? $0 : nil) }
     }
 
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.

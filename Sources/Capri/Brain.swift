@@ -6,16 +6,29 @@ struct ChatMessage: Codable {
     let content: String
 }
 
+/// Herramienta que eligió el modelo, con sus datos en JSON tal como llegaron. Se valida antes de usarla (`Tools`).
+struct ToolCall: Sendable {
+    let name: String
+    let arguments: Data
+}
+
+/// Lo que escribió el modelo: texto y, si eligió una herramienta, cuál.
+struct BrainOutput: Sendable {
+    let text: String
+    var toolCall: ToolCall?
+}
+
 /// El modelo que piensa las respuestas, detrás de un protocolo para poder cambiar de proveedor (D-1).
 /// Los resultados llegan en el hilo principal.
 protocol Brain: AnyObject {
     /// Mientras James habla: carga el modelo y lee ya el principio de la conversación (personalidad e
     /// historial), para que al llegar la pregunta solo quede leer esta y escribir la respuesta.
     func warmUp(with messages: [ChatMessage])
-    /// `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes de que termine;
-    /// `completion`, el texto completo.
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void)
+    /// `tools` son las herramientas que puede elegir (formato de la API de Anthropic); un modelo que no las
+    /// admite las ignora. `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes
+    /// de que termine; `completion`, el texto completo y la herramienta elegida.
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void)
     func cancel()
 }
 
@@ -52,10 +65,10 @@ final class DemoBrain: Brain {
     func warmUp(with messages: [ChatMessage]) {}
     func cancel() {}
 
-    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
-                 completion: @escaping (Result<String, Error>) -> Void) {
+    func respond(to messages: [ChatMessage], tools: [[String: Any]], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<BrainOutput, Error>) -> Void) {
         let question = messages.last { $0.role == "user" }?.content ?? ""
         let text = question.components(separatedBy: "</portapapeles>").last ?? question
-        DispatchQueue.main.async { completion(.success(DemoReply.response(to: text))) }
+        DispatchQueue.main.async { completion(.success(BrainOutput(text: DemoReply.response(to: text)))) }
     }
 }
