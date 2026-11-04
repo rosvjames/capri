@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let pushToTalk = PushToTalk()
     let listener = SpeechListener()
     let speaker = Speaker()
+    let conversation = Conversation()
     let music = MusicWatcher()
     private var accessibilityWatch: AnyCancellable?
 
@@ -33,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let text = ProcessInfo.processInfo.environment["CAPRI_DECIR"] {
             speaker.speak(text)
         }
+        // CAPRI_PREGUNTAR="texto" hace como si se lo hubieras dicho: piensa la respuesta y la dice.
+        if let text = ProcessInfo.processInfo.environment["CAPRI_PREGUNTAR"] {
+            listener.onFinal(text)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -40,9 +45,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// ⌘ derecho mantenido (o el botón Hablar) → escuchar, transcribir y responder en voz.
-    /// El demo devuelve un saludo fijo para «hola Capri» y eco para el resto; aún no usa IA.
+    /// La respuesta la piensa el modelo local (`Conversation`); con CAPRI_LLM=demo, eco sin IA.
     private func installPushToTalk(_ notch: NotchController) {
-        let model = notch.model, listener = listener, speaker = speaker
+        let model = notch.model, listener = listener, speaker = speaker, conversation = conversation
         speaker.onPreparing = { model.mode = .thinking }
         speaker.onStart = {
             TalkingFace.shared.reset()
@@ -65,8 +70,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         listener.onLevel = { model.audioLevel = $0 }
         listener.onFinal = { text in
             model.transcript = text
-            model.mode = .idle
-            speaker.speak(DemoReply.response(to: text))
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return speaker.speak("No te escuché.")
+            }
+            model.mode = .thinking
+            conversation.ask(text) { result in
+                switch result {
+                case .success(let reply): speaker.speak(reply.spoken)
+                case .failure(let error): speaker.speak((error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo.")
+                }
+            }
         }
         listener.onError = { message in
             model.transcript = message
@@ -75,7 +88,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let begin = {
             guard model.permissions.allGranted else { return model.permissions.requestMissing() }
             speaker.stop()  // si estaba hablando, se calla para escucharte
+            conversation.cancel()
             speaker.prepare()
+            conversation.warmUp()
             model.transcript = ""
             model.mode = .listening
             listener.start()
@@ -97,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard model.mode != .idle else { return }
             Logger(subsystem: "com.rosvjames.capri", category: "atajo").notice("Esc: se cancela \(String(describing: model.mode), privacy: .public)")
             listener.cancel()
+            conversation.cancel()
             speaker.stop()
             model.mode = .idle
         }
@@ -134,6 +150,28 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
     writeIconPreview(to: args[i + 1])
     exit(0)
+}
+// --preguntar "texto" ["seguimiento"…] imprime las respuestas, en la misma conversación, sin voz ni ventana.
+if let i = args.firstIndex(of: "--preguntar") {
+    let conversation = Conversation()
+    var questions = args[(i + 1)...].filter { !$0.hasPrefix("--") }[...]
+    func next() {
+        guard let question = questions.popFirst() else { exit(0) }
+        let start = Date()
+        conversation.ask(question) { result in
+            print("\n> \(question)")
+            switch result {
+            case .success(let reply):
+                print(reply.spoken)
+                if let copyable = reply.copyable { print("[copiar]\n\(copyable)") }
+            case .failure(let error): print("error: \(error.localizedDescription)")
+            }
+            print(String(format: "(%.2f s)", Date().timeIntervalSince(start)))
+            next()
+        }
+    }
+    next()
+    dispatchMain()
 }
 if args.contains("--timing-check") {
     printExposureSchedule()
