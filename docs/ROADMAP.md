@@ -57,8 +57,8 @@ Rama: `fase-2b/musica`, fusionada en `main`. Solo Spotify. Decisiones: notch cer
 6. ✅ **Convivencia**: en pausa o sin Spotify el notch vuelve a su estado normal, y si Capri escucha, piensa o habla tiene prioridad (pasos 4 y 5). ~~Abrir el panel unos segundos al cambiar de canción~~: descartado por el usuario; con música de fondo se volvería molesto. El cambio se ve en la carátula del notch cerrado.
 - ✅ Hito: al cambiar de canción el notch cerrado muestra la nueva carátula; los controles del panel funcionan; sin música sigue a 0 % de CPU y con música y el notch cerrado también (las barras las anima el servidor de ventanas).
 
-## Fase 3 — Cerebro (C-03, C-04, C-05) 🟨
-Rama: `fase-3/cerebro`. Capri responde preguntas rápidas (comandos, atajos, errores simples), no trabajo de código a fondo. Decisiones: Claude por API (D-1, revisada: primero fue el modelo local), tono directo y nada meloso.
+## Fase 3 — Cerebro (C-03, C-04, C-05) ✅ (`v0.3.0`)
+Rama: `fase-3/cerebro`, fusionada en `main`. Capri responde preguntas rápidas (comandos, atajos, errores simples), no trabajo de código a fondo. Decisiones: Claude por API (D-1, revisada: primero fue el modelo local), tono directo y nada meloso.
 1. ✅ **Cliente LLM detrás de un protocolo** (`Brain.swift`, `OllamaBrain.swift`): Gemma 4 12B en Ollama, en el propio Mac y gratis. Elegido probando Gemma 3 4B, Qwen 3 8B y Gemma 4 12B con preguntas reales: el último es el único que acierta casi todo (~1 s por respuesta, ~9 GB mientras está cargado; Ollama lo descarga a los 10 min). `CAPRI_MODELO` o `defaults write com.rosvjames.capri modelo …` lo cambian; `CAPRI_LLM=demo` vuelve al eco. Si Ollama no está abierto, Capri lo dice.
 2. ✅ **Personalidad** (`Resources/capri-personalidad.md`): español de México, una o dos frases, directa y nada melosa; nunca lee comandos en voz alta y los atajos sí los dice. Tres ejemplos en el prompt corrigieron casi todos los fallos (atajos en el bloque de copiar, reiniciar con un atajo raro, `docker start`). **Memoria corta** (`Conversation.swift`): recuerda los últimos turnos y los olvida tras 10 min sin hablar.
 3. ✅ **Franja inferior** (`CopyStrip.swift`): si la respuesta trae un comando, código o enlace, el panel crece hacia abajo al terminar de hablar con el texto en monoespaciada y un botón Copiar. Se cierra sola a los 15 s, o al salir del panel después de pasar el ratón por ella. Las respuestas solo habladas no la abren ("voz primero"). `--snapshot … franja` la captura.
@@ -72,7 +72,7 @@ Rama: `fase-3/cerebro`. Capri responde preguntas rápidas (comandos, atajos, err
    - **Astropods** (créditos sobrantes de la hackathon de PayPal, ~US$4,5): su AI Gateway pasa la API de mensajes (`https://aig.astropods.ai/anthropic`, cabecera `x-bf-vk`), solo con modelos anteriores, y su clave de desarrollo caduca a las 24 h: `tools/clave-astropods.sh` la renueva (necesita `ast login` y Docker abierto) y la guarda sin mostrarla. Si vence, Capri lo dice.
    - Medido en la app con voz (6 preguntas): **Haiku 4.5, 1,35–1,6 s** hasta oírla y estable desde la primera; Sonnet 5, 1,8–2,5 s; Gemma, 1,5–2,2 s. Memoria libre del Mac: 84 % sin Gemma frente a 36 % con ella. Ninguno de los dos inventó comandos (Gemma decía `quit`); Haiku a veces dice el comando en voz en vez de mandarlo a la franja, Sonnet es más ordenado pero más largo.
    - Costo estimado por pregunta: Haiku 4.5 ~US$0,0013 (los créditos dan para ~3 000), Sonnet 5 ~US$0,003, Haiku 5.5 con clave propia ~US$0,0002.
-- ⬜ Hito: preguntas de terminal y de errores respondidas por voz (falta la prueba del usuario con la app empaquetada)
+- ✅ Hito: preguntas de terminal y de errores respondidas por voz, probado por el usuario con la app empaquetada y Haiku 4.5. La personalidad se ajustó para Haiku: no nombrar comandos en voz, dar el comando habitual de las herramientas comunes y `python3` en macOS.
 
 ## Fase 4 — Acciones locales (C-06 a C-09)
 - ⬜ Tool calling: el LLM elige herramienta, la app la ejecuta
