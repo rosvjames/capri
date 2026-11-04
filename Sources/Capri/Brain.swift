@@ -21,16 +21,23 @@ protocol Brain: AnyObject {
 
 enum Brains {
     /// El modelo sale de CAPRI_MODELO o de `defaults write com.rosvjames.capri modelo …` (la app abierta con
-    /// `open` no recibe variables de entorno): los que empiezan por "claude-" van por la API de Anthropic y el
-    /// resto, por Ollama. Sin ajuste, Claude Haiku si hay clave en el Llavero y, si no, Gemma en el Mac.
+    /// `open` no recibe variables de entorno): los que empiezan por "claude-" van a Claude (con la clave de
+    /// Anthropic o, si no hay, por Astropods) y el resto, por Ollama. Sin ajuste: Haiku 5.5 con clave de
+    /// Anthropic, Haiku 4.5 con la de Astropods y, sin ninguna, Gemma en el Mac.
     /// CAPRI_LLM=demo responde sin IA, como en la Fase 2.
     static func make() -> Brain {
         let environment = ProcessInfo.processInfo.environment
         if environment["CAPRI_LLM"] == "demo" { return DemoBrain() }
-        let model = environment["CAPRI_MODELO"]
-            ?? UserDefaults.standard.string(forKey: "modelo")
-            ?? (AnthropicKey.exists ? "claude-haiku-5-5" : "gemma4:12b")
-        return model.hasPrefix("claude-") ? ClaudeBrain(model: model) : OllamaBrain(model: model)
+        let access = ClaudeAccess.available
+        let fallback: String
+        switch access {
+        case .anthropic: fallback = "claude-haiku-5-5"
+        case .astropods: fallback = "claude-haiku-4-5"
+        case nil: fallback = "gemma4:12b"
+        }
+        let model = environment["CAPRI_MODELO"] ?? UserDefaults.standard.string(forKey: "modelo") ?? fallback
+        guard model.hasPrefix("claude-") || model.hasPrefix("bedrock/") else { return OllamaBrain(model: model) }
+        return ClaudeBrain(model: model, access: access ?? .anthropic)
     }
 }
 
