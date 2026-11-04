@@ -306,4 +306,21 @@ enum APIKeys {
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let data = item as? Data else { return nil }
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    /// Guarda o reemplaza un valor que obtiene la propia app (la sesión de Spotify). Al crearlo Capri, solo
+    /// Capri puede leerlo sin preguntar.
+    static func save(_ value: String, account: String) {
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                                    kSecAttrAccount as String: account]
+        let data = Data(value.utf8)
+        if SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary) == errSecItemNotFound {
+            SecItemAdd(query.merging([kSecValueData as String: data]) { a, _ in a } as CFDictionary, nil)
+        }
+    }
+
+    static func delete(account: String) {
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                                    kSecAttrAccount as String: account]
+        SecItemDelete(query as CFDictionary)
+    }
 }

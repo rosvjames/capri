@@ -9,39 +9,40 @@ import SwiftUI
 /// detrás de la interfaz (cuerpo y pelo) y delante (lo que se apoya por encima de la línea, como los dedos).
 /// Ninguna de las dos recibe clics.
 enum MusicLayout {
-    static let width: CGFloat = 680
-    static let height: CGFloat = 260
-    static let margin: CGFloat = 24
+    static let width: CGFloat = 560
+    static let height: CGFloat = 200
+    static let margin: CGFloat = 20
 
     /// Línea sobre la que se apoya Capri.
-    static let separatorY: CGFloat = 160
-    /// Hueco del arte: termina en la línea, a la derecha; el lado izquierdo queda para los iconos.
-    static let art = CGRect(x: 192, y: 4, width: 468, height: 156)
+    static let separatorY: CGFloat = 120
+    /// Arte apoyado en la línea y alineado a la derecha. Es más alto que el espacio sobre la línea: el panel
+    /// recorta lo que sobra por arriba (puntas del pelo), para que el panel no crezca por ella.
+    static let art = CGRect(x: 70, y: separatorY - 162, width: 486, height: 162)
 
-    static let cover = CGRect(x: margin, y: 172, width: 56, height: 56)
-    static let textX: CGFloat = 92
-    static let titleSize: CGFloat = 15
-    static let artistSize: CGFloat = 12
+    static let cover = CGRect(x: margin, y: 130, width: 44, height: 44)
+    static let textX: CGFloat = 74
+    static let titleSize: CGFloat = 13.5
+    static let artistSize: CGFloat = 11
 
-    /// Controles a la derecha de la banda, centrados en la carátula.
-    static let controlsY: CGFloat = 200
-    static let controlsRight: CGFloat = width - margin - 16
-    static let controlSpacing: CGFloat = 46
-    static let mainControl: CGFloat = 40
-    static let control: CGFloat = 32
+    /// Controles a la derecha de la banda, centrados en la carátula: Me gusta, anterior, pausa, siguiente y repetir.
+    static let controlsY: CGFloat = 152
+    static let controlsRight: CGFloat = width - margin - 14
+    static let controlSpacing: CGFloat = 38
+    static let mainControl: CGFloat = 34
+    static let control: CGFloat = 28
 
     /// Fila del progreso: tiempo, barra y duración.
-    static let progressY: CGFloat = 244
-    static let timeWidth: CGFloat = 36
+    static let progressY: CGFloat = 184
+    static let timeWidth: CGFloat = 32
     static let barHeight: CGFloat = 3
 }
 
 /// Iconos de las secciones del panel, arriba a la izquierda y lejos de la cámara. La activa va en verde y
 /// subrayada.
 enum SectionTabs {
-    static let centersX: [CGFloat] = [26, 62]
-    static let centerY: CGFloat = 16
-    static let hit: CGFloat = 32
+    static let centersX: [CGFloat] = [24, 56]
+    static let centerY: CGFloat = 15
+    static let hit: CGFloat = 30
 }
 
 struct SectionTabsView: View {
@@ -53,7 +54,7 @@ struct SectionTabsView: View {
                 let active = model.section == section
                 Button { model.selectedSection = section } label: {
                     Image(systemName: section.symbol)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(active ? Theme.green : .white.opacity(0.7))
                         .frame(width: SectionTabs.hit, height: SectionTabs.hit)
                         .overlay(alignment: .bottom) {
@@ -123,7 +124,7 @@ struct MusicPanelView: View {
 
     private func player(_ song: NowPlaying) -> some View {
         let c = MusicLayout.cover
-        let controlsLeft = MusicLayout.controlsRight - 3 * MusicLayout.controlSpacing - MusicLayout.mainControl / 2
+        let controlsLeft = MusicLayout.controlsRight - 4 * MusicLayout.controlSpacing - MusicLayout.control / 2
         return ZStack(alignment: .topLeading) {
             ArtworkThumb(image: model.artwork)
                 .frame(width: c.width, height: c.height)
@@ -140,7 +141,7 @@ struct MusicPanelView: View {
                     .lineLimit(1)
             }
             .truncationMode(.tail)
-            .frame(width: controlsLeft - 16 - MusicLayout.textX, height: c.height, alignment: .leading)
+            .frame(width: controlsLeft - 12 - MusicLayout.textX, height: c.height, alignment: .leading)
             .offset(x: MusicLayout.textX, y: c.minY)
 
             controls(song)
@@ -148,14 +149,17 @@ struct MusicPanelView: View {
         }
     }
 
-    /// Anterior, pausa/reproducir, siguiente y repetir, de izquierda a derecha.
+    /// Me gusta, anterior, pausa/reproducir, siguiente y repetir, de izquierda a derecha.
     private func controls(_ song: NowPlaying) -> some View {
-        let x = { (i: Int) in MusicLayout.controlsRight - CGFloat(3 - i) * MusicLayout.controlSpacing }
+        let x = { (i: Int) in MusicLayout.controlsRight - CGFloat(4 - i) * MusicLayout.controlSpacing }
+        let liked = model.liked == true
         return ZStack(alignment: .topLeading) {
-            control("backward.end.fill", help: "Anterior", centerX: x(0)) { model.musicCommand(.previous) }
+            control(liked ? "heart.fill" : "heart", help: liked ? "Quitar de Tus me gusta" : "Me gusta",
+                    centerX: x(0), tint: liked ? Theme.green : nil) { model.toggleLike() }
+            control("backward.end.fill", help: "Anterior", centerX: x(1)) { model.musicCommand(.previous) }
             Button { model.musicCommand(.playPause) } label: {
                 Image(systemName: song.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.green)
                     .frame(width: MusicLayout.mainControl, height: MusicLayout.mainControl)
                     .overlay(Circle().strokeBorder(Theme.green, lineWidth: 1.5))
@@ -163,10 +167,10 @@ struct MusicPanelView: View {
             }
             .buttonStyle(.plain)
             .help(song.isPlaying ? "Pausa" : "Reproducir")
-            .offset(x: x(1) - MusicLayout.mainControl / 2, y: MusicLayout.controlsY - MusicLayout.mainControl / 2)
-            control("forward.end.fill", help: "Siguiente", centerX: x(2)) { model.musicCommand(.next) }
+            .offset(x: x(2) - MusicLayout.mainControl / 2, y: MusicLayout.controlsY - MusicLayout.mainControl / 2)
+            control("forward.end.fill", help: "Siguiente", centerX: x(3)) { model.musicCommand(.next) }
             control("repeat", help: model.repeating == true ? "Quitar la repetición" : "Repetir",
-                    centerX: x(3), tint: model.repeating == true ? Theme.green : nil) { model.toggleRepeat() }
+                    centerX: x(4), tint: model.repeating == true ? Theme.green : nil) { model.toggleRepeat() }
         }
     }
 
@@ -174,7 +178,7 @@ struct MusicPanelView: View {
                          action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tint ?? .white.opacity(0.85))
                 .frame(width: MusicLayout.control, height: MusicLayout.control)
                 .contentShape(Rectangle())

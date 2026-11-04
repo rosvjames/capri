@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let speaker = Speaker()
     let music = MusicWatcher()
     let ducker = AudioDucker()
+    let spotifyAccount = SpotifyAccount()
     lazy var conversation = Conversation(actions: ActionRunner(music: music))
     private var accessibilityWatch: AnyCancellable?
     private var duckingWatch: AnyCancellable?
@@ -20,7 +21,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.notch = notch
         installStatusItem()
         installPushToTalk(notch)
-        music.onChange = { notch.model.nowPlaying = $0 }
+        music.onChange = { [spotifyAccount] song in
+            let changed = song?.trackID != notch.model.nowPlaying?.trackID
+            notch.model.nowPlaying = song
+            guard changed else { return }
+            // Me gusta de la canción nueva (solo con la sesión de Spotify iniciada).
+            notch.model.liked = nil
+            guard let id = song?.trackID else { return }
+            spotifyAccount.isSaved(id) { saved in
+                if notch.model.nowPlaying?.trackID == id { notch.model.liked = saved }
+            }
+        }
+        notch.model.toggleLike = { [spotifyAccount] in
+            guard let id = notch.model.nowPlaying?.trackID else { return }
+            let target = !(notch.model.liked ?? false)
+            notch.model.liked = target  // se ve al instante; si falla, vuelve
+            spotifyAccount.setSaved(id, target) { saved in
+                guard notch.model.nowPlaying?.trackID == id else { return }
+                notch.model.liked = saved ?? !target
+            }
+        }
         music.onArtwork = { notch.model.artwork = $0 }
         notch.model.musicCommand = { [music] in music.spotify.send($0) }
         music.onClock = { notch.model.clock = $0 }

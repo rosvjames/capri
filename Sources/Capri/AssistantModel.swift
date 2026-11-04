@@ -78,6 +78,9 @@ final class AssistantModel: ObservableObject {
     /// Posición, duración y repetición de la canción, para la barra de progreso; nil si no se conocen.
     @Published var clock: PlaybackClock?
     @Published var repeating: Bool?
+    /// La canción está en Tus me gusta; nil si no se sabe (sin sesión de Spotify o aún sin leer).
+    @Published var liked: Bool?
+    var toggleLike: () -> Void = {}
     /// Saltar a un punto de la canción, activar o quitar la repetición, y leer el reloj al abrir el panel.
     var seek: (TimeInterval) -> Void = { _ in }
     var toggleRepeat: () -> Void = {}
