@@ -100,6 +100,40 @@ enum Tools {
         ],
     ]
 
+    /// La llamada a la herramienta equivalente a una orden de la vía rápida, para el historial. La hora y la
+    /// fecha no tienen herramienta: el modelo ya las sabe.
+    static func call(for action: Action) -> ToolCall? {
+        switch action {
+        case .tellTime, .tellDate: return nil
+        case .tellTimeIn(let place, let zone): return .local(name: "hora_en", input: ["lugar": place, "zona": zone])
+        case .openApp(let name): return .local(name: "abrir_app", input: ["nombre": name])
+        case .openWebsite(let address): return .local(name: "abrir_sitio", input: ["direccion": address])
+        case .volume(let change):
+            switch change {
+            case .up: return .local(name: "volumen", input: ["accion": "subir"])
+            case .down: return .local(name: "volumen", input: ["accion": "bajar"])
+            case .mute: return .local(name: "volumen", input: ["accion": "silenciar"])
+            case .unmute: return .local(name: "volumen", input: ["accion": "quitar_silencio"])
+            case .set(let level): return .local(name: "volumen", input: ["accion": "fijar", "nivel": level])
+            }
+        case .music(let request):
+            switch request {
+            case .pause: return .local(name: "musica", input: ["accion": "pausar"])
+            case .play: return .local(name: "musica", input: ["accion": "seguir"])
+            case .next: return .local(name: "musica", input: ["accion": "siguiente"])
+            case .previous: return .local(name: "musica", input: ["accion": "anterior"])
+            case .nowPlaying: return .local(name: "musica", input: ["accion": "que_suena"])
+            case .search(let query, let kind):
+                let tipo = switch kind {
+                case .track: "cancion"
+                case .artist: "artista"
+                case .album: "album"
+                }
+                return .local(name: "musica", input: ["accion": "poner", "busqueda": query, "tipo": tipo])
+            }
+        }
+    }
+
     /// La acción que pide la herramienta, o nil si el nombre o los datos no son válidos.
     static func action(from call: ToolCall) -> Action? {
         guard let input = try? JSONSerialization.jsonObject(with: call.arguments) as? [String: Any] else { return nil }

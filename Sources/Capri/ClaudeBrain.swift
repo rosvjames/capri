@@ -106,6 +106,7 @@ final class ClaudeBrain: Brain {
             var text = ""
             // Herramienta elegida: nombre y JSON de sus datos, que llega por trozos (input_json_delta).
             var toolName: String?
+            var toolID = ""
             var toolIndex: Int?
             var toolJSON = ""
             do {
@@ -131,6 +132,7 @@ final class ClaudeBrain: Brain {
                         guard toolName == nil, let block = json["content_block"] as? [String: Any],
                               block["type"] as? String == "tool_use", let name = block["name"] as? String else { continue }
                         toolName = name
+                        toolID = block["id"] as? String ?? ""
                         toolIndex = json["index"] as? Int
                         log.notice("\(model, privacy: .public): herramienta \(name, privacy: .public) en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
                     case "content_block_delta":
@@ -165,7 +167,7 @@ final class ClaudeBrain: Brain {
                 }
                 log.notice("\(model, privacy: .public) respondió en \(Date().timeIntervalSince(start), format: .fixed(precision: 2)) s")
                 // Sin datos, la API manda el JSON vacío como "" en vez de "{}".
-                let call = toolName.map { ToolCall(name: $0, arguments: Data((toolJSON.isEmpty ? "{}" : toolJSON).utf8)) }
+                let call = toolName.map { ToolCall(id: toolID, name: $0, arguments: Data((toolJSON.isEmpty ? "{}" : toolJSON).utf8)) }
                 let result = BrainOutput(text: text, toolCall: call)
                 await MainActor.run { if !Task.isCancelled { completion(.success(result)) } }
             } catch {
@@ -188,7 +190,7 @@ final class ClaudeBrain: Brain {
             "max_tokens": 1024,
             "stream": true,
             "system": system,
-            "messages": messages.filter { $0.role != "system" }.map { ["role": $0.role, "content": $0.content] },
+            "messages": messages.filter { $0.role != "system" }.flatMap(Self.apiMessages),
         ]
         if !tools.isEmpty { body["tools"] = tools }
         guard let url = URL(string: access.baseURL + "/v1/messages") else { return nil }
@@ -218,6 +220,19 @@ final class ClaudeBrain: Brain {
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    /// Un turno con herramienta se manda como la API los produce: la llamada, su resultado y la confirmación.
+    private static func apiMessages(_ message: ChatMessage) -> [[String: Any]] {
+        guard let call = message.action, !call.id.isEmpty,
+              let input = try? JSONSerialization.jsonObject(with: call.arguments) as? [String: Any] else {
+            return [["role": message.role, "content": message.content]]
+        }
+        return [
+            ["role": "assistant", "content": [["type": "tool_use", "id": call.id, "name": call.name, "input": input]]],
+            ["role": "user", "content": [["type": "tool_result", "tool_use_id": call.id, "content": message.content]]],
+            ["role": "assistant", "content": message.content],
+        ]
     }
 
     private static func logUsage(_ usage: Any?, model: String) {

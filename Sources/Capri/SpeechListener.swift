@@ -18,6 +18,9 @@ final class SpeechListener {
     private var task: SFSpeechRecognitionTask?
     private var lastText = ""
     private var finished = true
+    /// Identifica cada escucha: la espera del texto final de una escucha anterior no debe cortar la actual
+    /// (pasaba al soltar ⌘ y volver a pulsarlo antes de 2 s).
+    private var session = 0
     private var lastLevelUpdate = Date.distantPast
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "escucha")
     /// Con CAPRI_DEBUG_TRANSCRIPT=1 el texto reconocido aparece en el registro (por defecto se oculta).
@@ -32,6 +35,7 @@ final class SpeechListener {
             return
         }
         finished = false
+        session += 1
         lastText = ""
 
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -48,8 +52,13 @@ final class SpeechListener {
             self?.reportLevel(buffer)
         }
 
+        let current = session
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            DispatchQueue.main.async { self?.handle(result: result, error: error) }
+            // Los avisos de una tarea anterior (su cancelación llega tarde) no tocan la escucha actual.
+            DispatchQueue.main.async {
+                guard let self, self.session == current else { return }
+                self.handle(result: result, error: error)
+            }
         }
 
         do {
@@ -69,8 +78,9 @@ final class SpeechListener {
         guard !finished else { return }
         stopAudio()
         request?.endAudio()
+        let current = session
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self, !self.finished else { return }
+            guard let self, !self.finished, self.session == current else { return }
             self.log.notice("sin texto final a tiempo; se usa el último parcial")
             self.finish()
         }
@@ -78,7 +88,6 @@ final class SpeechListener {
 
     func cancel() {
         guard !finished else { return }
-        task?.cancel()
         teardown()
         finished = true
         log.notice("cancelado")
@@ -123,8 +132,12 @@ final class SpeechListener {
         DispatchQueue.main.async { self.onLevel(0) }
     }
 
+    /// Cierra también la tarea de reconocimiento: si queda abierta, ocupa el reconocedor del Mac y las
+    /// escuchas siguientes terminan al instante con "No speech detected".
     private func teardown() {
         stopAudio()
+        request?.endAudio()
+        task?.cancel()
         task = nil
         request = nil
     }

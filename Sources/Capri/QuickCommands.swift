@@ -53,12 +53,16 @@ enum QuickCommands {
                    "sube todo el volumen"], .volume(.set(100)))
         + phrases(["volumen a la mitad", "pon el volumen a la mitad", "el volumen a la mitad"], .volume(.set(50)))
         + phrases(["pausa", "pausa la musica", "pausa la cancion", "pausala", "pon pausa", "deten la musica",
-                   "para la musica", "stop", "quita la musica", "pausa spotify", "deten la cancion"], .music(.pause))
+                   "para la musica", "stop", "quita la musica", "pausa spotify", "deten la cancion", "pausar",
+                   "detenla", "parala", "para", "pausa la", "ponle pausa", "pausa esto"], .music(.pause))
         + phrases(["sigue", "continua", "reanuda", "play", "pon play", "dale play", "sigue la musica",
                    "continua la musica", "reanuda la musica", "quita la pausa", "pon la musica", "pon musica",
-                   "pon spotify", "sigue con la musica"], .music(.play))
+                   "pon spotify", "sigue con la musica", "reanudala", "reanudar", "reanuda la cancion",
+                   "continuala", "continua la cancion", "siguela", "sigue la cancion", "ponla", "dale",
+                   "ponle play", "quitale la pausa", "despausa", "despausala"], .music(.play))
         + phrases(["siguiente", "siguiente cancion", "la siguiente", "la que sigue", "pasala", "salta la cancion",
-                   "salta esta cancion", "skip", "cambia la cancion", "otra cancion", "pon la siguiente",
+                   "salta esta cancion", "skip", "cambia la cancion", "otra cancion", "pon la siguiente", "cambiala",
+                   "saltala", "salta", "otra",
                    "pon la siguiente cancion"], .music(.next))
         + phrases(["anterior", "cancion anterior", "la anterior", "regresa la cancion", "la de antes",
                    "pon la anterior", "pon la cancion anterior", "regresa a la anterior"], .music(.previous))

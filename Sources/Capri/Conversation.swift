@@ -106,8 +106,9 @@ final class Conversation {
         brain.warmUp(with: [system] + history)
     }
 
-    private func remember(_ turn: ChatMessage, _ answer: String) {
-        history = Array((history + [turn, ChatMessage(role: "assistant", content: answer)]).suffix(Self.maxHistory))
+    private func remember(_ turn: ChatMessage, _ answer: String, action: ToolCall? = nil) {
+        let reply = ChatMessage(role: "assistant", content: answer, action: action)
+        history = Array((history + [turn, reply]).suffix(Self.maxHistory))
         lastTurn = Date()
     }
 
@@ -122,19 +123,20 @@ final class Conversation {
         cancel()
         let id = requestID
         forgetIfStale()
-        let act = { [weak self] (action: Action, turn: ChatMessage) in
+        let act = { [weak self] (action: Action, call: ToolCall?, turn: ChatMessage) in
             self?.actions.perform(action) { outcome in
                 guard let self, id == self.requestID else { return }
-                // En el historial queda la confirmación, como texto: así el modelo sigue el hilo
-                // ("súbelo más") sin tener que guardar la llamada a la herramienta y su resultado.
-                self.remember(turn, outcome.spoken)
+                // En el historial queda la llamada a la herramienta con su confirmación, también si llegó por
+                // la vía rápida: así el modelo sigue el hilo ("súbelo más") y, ante una orden parecida, usa
+                // la herramienta en vez de contestar "Listo" sin hacer nada.
+                self.remember(turn, outcome.spoken, action: call ?? Tools.call(for: action))
                 onSentence(outcome.spoken)
                 completion(.success(Reply(spoken: outcome.spoken)))
             }
         }
         if let action = QuickCommands.match(question, apps: actions.apps) {
             Self.log.notice("vía rápida: \(String(describing: action), privacy: .public)")
-            act(action, ChatMessage(role: "user", content: question))
+            act(action, nil, ChatMessage(role: "user", content: question))
             return
         }
         let turn = ChatMessage(role: "user", content: ClipboardContext.attach(to: question))
@@ -161,7 +163,7 @@ final class Conversation {
                     say(message)
                     return completion(.success(Reply(spoken: message)))
                 }
-                act(action, turn)
+                act(action, call, turn)
             case .success(let output):
                 let raw = output.text
                 self.remember(turn, raw)
