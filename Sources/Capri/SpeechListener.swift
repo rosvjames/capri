@@ -13,7 +13,11 @@ final class SpeechListener {
     var onError: (String) -> Void = { _ in }
 
     private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-MX"))
-    private let engine = AVAudioEngine()
+    /// Uno nuevo en cada escucha: el formato del micrófono puede cambiar entre escuchas (al volver de la
+    /// suspensión, al conectar otro dispositivo o al crear el de la atenuación) y un motor viejo conserva el
+    /// anterior. Instalar la escucha con un formato que ya no coincide cierra la app (excepción de AVFAudio).
+    private var engine = AVAudioEngine()
+    private var configurationObserver: NSObjectProtocol?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var lastText = ""
@@ -45,13 +49,6 @@ final class SpeechListener {
         if onDevice { request.requiresOnDeviceRecognition = true }
         self.request = request
 
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            request.append(buffer)
-            self?.reportLevel(buffer)
-        }
-
         let current = session
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             // Los avisos de una tarea anterior (su cancelación llega tarde) no tocan la escucha actual.
@@ -61,15 +58,46 @@ final class SpeechListener {
             }
         }
 
-        do {
-            engine.prepare()
-            try engine.start()
+        if startAudio(request) {
             log.notice("escuchando (en el dispositivo: \(onDevice, privacy: .public))")
-        } catch {
-            log.error("no se pudo abrir el micrófono: \(error.localizedDescription, privacy: .public)")
+        } else {
             teardown()
             finished = true
             onError("No pude abrir el micrófono.")
+        }
+    }
+
+    /// Abre el micrófono con un motor nuevo y comprueba antes el formato. Si macOS cambia la configuración de
+    /// audio a mitad de la escucha, el motor se detiene: se vuelve a abrir y la misma petición sigue recibiendo.
+    private func startAudio(_ request: SFSpeechAudioBufferRecognitionRequest) -> Bool {
+        stopAudio()
+        engine = AVAudioEngine()
+        let input = engine.inputNode
+        let format = input.outputFormat(forBus: 0)
+        let hardware = input.inputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0, format.sampleRate == hardware.sampleRate else {
+            log.error("formato del micrófono no válido: \(format.sampleRate) Hz frente a \(hardware.sampleRate) Hz")
+            return false
+        }
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            request.append(buffer)
+            self?.reportLevel(buffer)
+        }
+        let current = session
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            guard let self, !self.finished, self.session == current, let request = self.request else { return }
+            self.log.notice("cambió la configuración de audio: se vuelve a abrir el micrófono")
+            if !self.startAudio(request) { self.finish() }
+        }
+        do {
+            engine.prepare()
+            try engine.start()
+            return true
+        } catch {
+            log.error("no se pudo abrir el micrófono: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
@@ -127,6 +155,8 @@ final class SpeechListener {
     }
 
     private func stopAudio() {
+        configurationObserver.map(NotificationCenter.default.removeObserver)
+        configurationObserver = nil
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         DispatchQueue.main.async { self.onLevel(0) }

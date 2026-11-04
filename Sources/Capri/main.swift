@@ -129,8 +129,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speaker.prepare()
             conversation.warmUp()
             model.transcript = ""
-            model.mode = .listening
+            // Primero el micrófono y después el cambio de estado, que pone en marcha la atenuación: crear su
+            // dispositivo de audio reconfigura el audio del Mac y, si coincide con abrir el micrófono, el
+            // formato que se lee puede no ser el real.
             listener.start()
+            guard listener.isListening else { return }
+            model.mode = .listening
         }
         let end = {
             guard listener.isListening else { return }
