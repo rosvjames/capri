@@ -14,6 +14,8 @@ APP="$PWD/build/Capri.app"
 # El proyecto vive fuera del repositorio.
 DIR="$HOME/.capri"
 PROYECTO=capri-gateway
+# El instalador de Astropods pone `ast` aquí y solo lo añade al PATH de las terminales interactivas.
+export PATH="$HOME/.ast/bin:$PATH"
 
 command -v ast >/dev/null || { echo "Falta ast: https://docs.astropods.com/install-cli"; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Abre Docker y vuelve a intentarlo."; exit 1; }
