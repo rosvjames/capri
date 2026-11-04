@@ -9,8 +9,9 @@ struct ChatMessage: Codable {
 /// El modelo que piensa las respuestas, detrás de un protocolo para poder cambiar de proveedor (D-1).
 /// Los resultados llegan en el hilo principal.
 protocol Brain: AnyObject {
-    /// Empieza a cargar el modelo mientras James habla, para que la respuesta solo espere la generación.
-    func warmUp()
+    /// Mientras James habla: carga el modelo y lee ya el principio de la conversación (personalidad e
+    /// historial), para que al llegar la pregunta solo quede leer esta y escribir la respuesta.
+    func warmUp(with messages: [ChatMessage])
     /// `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes de que termine;
     /// `completion`, el texto completo.
     func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
@@ -33,7 +34,7 @@ struct BrainError: LocalizedError {
 
 /// Eco de la Fase 2, para probar el flujo sin modelo.
 final class DemoBrain: Brain {
-    func warmUp() {}
+    func warmUp(with messages: [ChatMessage]) {}
     func cancel() {}
 
     func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,

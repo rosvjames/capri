@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 /// Lo que responde Capri: lo que dice en voz y, si hace falta, lo que hay que copiar (la franja del panel).
 struct Reply: Equatable {
@@ -76,6 +77,7 @@ final class Conversation {
     static let forgetAfter: TimeInterval = 10 * 60
     /// Mensajes que se recuerdan (pregunta y respuesta cuentan por separado).
     static let maxHistory = 6
+    private static let log = Logger(subsystem: "com.rosvjames.capri", category: "llm")
 
     init(brain: Brain = Brains.make()) {
         self.brain = brain
@@ -83,7 +85,14 @@ final class Conversation {
             .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
     }
 
-    func warmUp() { brain.warmUp() }
+    func warmUp() {
+        forgetIfStale()
+        brain.warmUp(with: [ChatMessage(role: "system", content: personality)] + history)
+    }
+
+    private func forgetIfStale() {
+        if Date().timeIntervalSince(lastTurn) > Self.forgetAfter { history = [] }
+    }
 
     /// `onSentence` recibe lo que hay que decir, por frases y en orden, en cuanto el modelo las escribe;
     /// `completion`, la respuesta completa (con lo que hay que copiar) o el error.
@@ -91,7 +100,7 @@ final class Conversation {
              completion: @escaping (Result<Reply, Error>) -> Void) {
         cancel()
         let id = requestID
-        if Date().timeIntervalSince(lastTurn) > Self.forgetAfter { history = [] }
+        forgetIfStale()
         let turn = ChatMessage(role: "user", content: ClipboardContext.attach(to: question))
         let messages = [ChatMessage(role: "system", content: personality)] + history + [turn]
         var splitter = SentenceSplitter()
@@ -99,6 +108,7 @@ final class Conversation {
         let say = { (text: String) in
             guard !text.isEmpty else { return }
             spoke = true
+            Self.log.notice("frase lista: \(text.count) caracteres")
             onSentence(text)
         }
         brain.respond(to: messages, onPartial: { [weak self] partial in
