@@ -6,10 +6,7 @@ import os
 /// Ollama lo descarga de la memoria 10 minutos después de la última pregunta.
 /// La respuesta llega en streaming: la primera frase está lista en una fracción de ese tiempo.
 final class OllamaBrain: Brain {
-    /// CAPRI_MODELO o `defaults write com.rosvjames.capri modelo …` lo cambian (la app abierta con `open` no recibe variables de entorno).
-    let model = ProcessInfo.processInfo.environment["CAPRI_MODELO"]
-        ?? UserDefaults.standard.string(forKey: "modelo")
-        ?? "gemma4:12b"
+    let model: String
     private let endpoint = URL(string: "http://127.0.0.1:11434/api/chat")!
     /// Contexto reservado. Con el de Ollama (32 768) Gemma ocupaba ~17 GB y, junto a la voz, el Mac
     /// mandaba memoria al disco y la voz tardaba hasta 2 s más; una pregunta de Capri (personalidad,
@@ -18,6 +15,10 @@ final class OllamaBrain: Brain {
     private static let contextTokens = 8192
     private var task: Task<Void, Never>?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "llm")
+
+    init(model: String) {
+        self.model = model
+    }
 
     func warmUp(with messages: [ChatMessage]) {
         // Con un solo token de respuesta, Ollama carga el modelo y deja leídos estos mensajes en su caché:
