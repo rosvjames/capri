@@ -92,6 +92,21 @@ security add-generic-password -s com.rosvjames.capri -a anthropic -w
 
 Sin clave, Capri usa un modelo local con [Ollama](https://ollama.com) (`gemma4:12b`), que funciona sin internet pero ocupa ~10 GB de RAM. El modelo se cambia con `defaults write com.rosvjames.capri modelo <id>`: los que empiezan por `claude-` van por la API y el resto, por Ollama. También acepta el AI Gateway de Astropods (`tools/clave-astropods.sh`).
 
+Para que "pon tal canción" ponga a sonar el primer resultado (y no solo abra la búsqueda en Spotify), Capri usa la API web de Spotify para buscar. Hace falta una cuenta Premium, porque Spotify la exige al dueño de las apps de desarrollador:
+
+1. En [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), crea una app. Cualquier nombre y descripción sirven; en *Redirect URIs* pon `http://127.0.0.1:8888/callback` (Capri no la usa, pero el formulario la pide) y marca **Web API**.
+2. En los ajustes de la app, copia el *Client ID* y el *Client secret*, y guárdalos en el Llavero (cada comando pide el valor sin mostrarlo):
+
+```bash
+security add-generic-password -U -s com.rosvjames.capri -a spotify-id -w
+```
+
+```bash
+security add-generic-password -U -s com.rosvjames.capri -a spotify-secret -w
+```
+
+No hace falta iniciar sesión en Capri: solo busca, y la canción la reproduce la app de Spotify. Sin estas claves, o si la API falla, Capri abre la búsqueda en Spotify.
+
 Variables y opciones útiles:
 
 | Variable u opción | Qué hace |
@@ -99,7 +114,8 @@ Variables y opciones útiles:
 | `CAPRI_ESTADO=reposo\|activo\|abierto` | Fija un estado e ignora el ratón (para medir rendimiento) |
 | `CAPRI_DECIR="texto"` | Capri dice ese texto al arrancar, sin micrófono |
 | `CAPRI_PREGUNTAR="pregunta\|otra"` | Hace esas preguntas al arrancar, cada 20 s, sin micrófono |
-| `--preguntar "pregunta" ["seguimiento"…]` | Imprime las respuestas en la terminal, sin voz ni ventana |
+| `--preguntar "pregunta" ["seguimiento"…]` | Imprime las respuestas en la terminal, sin voz ni ventana (las acciones se hacen de verdad) |
+| `--entender "frase"…` | Muestra qué orden reconoce Capri sin el modelo, sin hacerla |
 | `CAPRI_TTS=paulina` | Usa la voz del sistema |
 | `CAPRI_LLM=demo` | Responde sin IA (repite lo que dices) |
 
