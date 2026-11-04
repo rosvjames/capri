@@ -11,7 +11,10 @@ struct ChatMessage: Codable {
 protocol Brain: AnyObject {
     /// Empieza a cargar el modelo mientras James habla, para que la respuesta solo espere la generación.
     func warmUp()
-    func respond(to messages: [ChatMessage], completion: @escaping (Result<String, Error>) -> Void)
+    /// `onPartial` recibe el texto acumulado según se escribe, para empezar a hablar antes de que termine;
+    /// `completion`, el texto completo.
+    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<String, Error>) -> Void)
     func cancel()
 }
 
@@ -33,7 +36,8 @@ final class DemoBrain: Brain {
     func warmUp() {}
     func cancel() {}
 
-    func respond(to messages: [ChatMessage], completion: @escaping (Result<String, Error>) -> Void) {
+    func respond(to messages: [ChatMessage], onPartial: @escaping (String) -> Void,
+                 completion: @escaping (Result<String, Error>) -> Void) {
         let question = messages.last { $0.role == "user" }?.content ?? ""
         let text = question.components(separatedBy: "</portapapeles>").last ?? question
         DispatchQueue.main.async { completion(.success(DemoReply.response(to: text))) }

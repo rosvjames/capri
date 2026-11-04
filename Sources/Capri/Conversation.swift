@@ -16,12 +16,51 @@ struct Reply: Equatable {
         }
         copyable = copyable?.trimmingCharacters(in: .whitespacesAndNewlines)
         if copyable?.isEmpty == true { copyable = nil }
-        // Por si se cuela formato de chat: la voz leería los asteriscos y las comillas invertidas.
-        spoken = spoken.replacingOccurrences(of: "[*_`#]", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        spoken = Self.clean(spoken)
         if spoken.isEmpty { spoken = copyable == nil ? "No sé qué decirte." : "Aquí lo tienes." }
         self.spoken = spoken
         self.copyable = copyable
+    }
+
+    /// Por si se cuela formato de chat: la voz leería los asteriscos y las comillas invertidas.
+    static func clean(_ text: String) -> String {
+        text.replacingOccurrences(of: "[*_`#]", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// Corta en frases el texto hablado según llega, para que la voz empiece con la primera
+/// mientras el modelo escribe el resto. Desde el primer "<" (el bloque <copiar>) ya no se dice nada.
+struct SentenceSplitter {
+    /// Caracteres del texto hablado ya entregados.
+    private var emitted = 0
+
+    private static func spokenPart(_ raw: String) -> Substring {
+        raw[..<(raw.firstIndex(of: "<") ?? raw.endIndex)]
+    }
+
+    /// Las frases completas nuevas del texto acumulado, juntas, o nil si aún no termina ninguna.
+    /// Una frase termina en . ? ! … o salto de línea seguido de espacio (así "3.5" no corta).
+    mutating func sentences(in raw: String) -> String? {
+        let pending = Self.spokenPart(raw).dropFirst(emitted)
+        var end: Substring.Index?
+        var i = pending.startIndex
+        while i < pending.endIndex {
+            let next = pending.index(after: i)
+            if ".?!…\n".contains(pending[i]), next < pending.endIndex, pending[next].isWhitespace { end = next }
+            i = next
+        }
+        guard let end else { return nil }
+        let chunk = pending[..<end]
+        emitted += chunk.count
+        return Reply.clean(String(chunk))
+    }
+
+    /// Lo que queda por decir del texto completo.
+    mutating func rest(of raw: String) -> String {
+        let pending = Self.spokenPart(raw).dropFirst(emitted)
+        emitted += pending.count
+        return Reply.clean(String(pending))
     }
 }
 
@@ -46,20 +85,37 @@ final class Conversation {
 
     func warmUp() { brain.warmUp() }
 
-    func ask(_ question: String, completion: @escaping (Result<Reply, Error>) -> Void) {
+    /// `onSentence` recibe lo que hay que decir, por frases y en orden, en cuanto el modelo las escribe;
+    /// `completion`, la respuesta completa (con lo que hay que copiar) o el error.
+    func ask(_ question: String, onSentence: @escaping (String) -> Void,
+             completion: @escaping (Result<Reply, Error>) -> Void) {
         cancel()
         let id = requestID
         if Date().timeIntervalSince(lastTurn) > Self.forgetAfter { history = [] }
         let turn = ChatMessage(role: "user", content: ClipboardContext.attach(to: question))
         let messages = [ChatMessage(role: "system", content: personality)] + history + [turn]
-        brain.respond(to: messages) { [weak self] result in
+        var splitter = SentenceSplitter()
+        var spoke = false
+        let say = { (text: String) in
+            guard !text.isEmpty else { return }
+            spoke = true
+            onSentence(text)
+        }
+        brain.respond(to: messages, onPartial: { [weak self] partial in
+            guard let self, id == self.requestID, let sentences = splitter.sentences(in: partial) else { return }
+            say(sentences)
+        }, completion: { [weak self] result in
             guard let self, id == self.requestID else { return }
             if case .success(let raw) = result {
                 self.history = Array((self.history + [turn, ChatMessage(role: "assistant", content: raw)]).suffix(Self.maxHistory))
                 self.lastTurn = Date()
+                // Si no se dijo nada por el camino (respuesta de una sola frase o solo un bloque), la respuesta
+                // entera, que ya trae su frase de respaldo.
+                let rest = splitter.rest(of: raw)
+                say(spoke ? rest : Reply(parsing: raw).spoken)
             }
             completion(result.map(Reply.init(parsing:)))
-        }
+        })
     }
 
     func cancel() {

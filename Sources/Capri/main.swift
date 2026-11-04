@@ -34,9 +34,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let text = ProcessInfo.processInfo.environment["CAPRI_DECIR"] {
             speaker.speak(text)
         }
-        // CAPRI_PREGUNTAR="texto" hace como si se lo hubieras dicho: piensa la respuesta y la dice.
+        // CAPRI_PREGUNTAR="texto" hace como si se lo hubieras dicho: precarga los modelos como al pulsar ⌘,
+        // espera lo que tardarías en hablar y entonces piensa la respuesta y la dice.
         if let text = ProcessInfo.processInfo.environment["CAPRI_PREGUNTAR"] {
-            listener.onFinal(text)
+            speaker.prepare()
+            conversation.warmUp()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [listener] in
+                Logger(subsystem: "com.rosvjames.capri", category: "escucha").notice("pregunta simulada")
+                listener.onFinal(text)
+            }
         }
     }
 
@@ -79,15 +85,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return speaker.speak("No te escuché.")
             }
             model.mode = .thinking
-            conversation.ask(text) { result in
+            // La primera frase empieza a sonar mientras el modelo escribe el resto.
+            var started = false
+            conversation.ask(text, onSentence: { sentence in
+                if !started {
+                    started = true
+                    speaker.begin()
+                }
+                speaker.add(sentence)
+            }, completion: { result in
                 switch result {
                 case .success(let reply):
                     model.copyable = reply.copyable
-                    speaker.speak(reply.spoken)
+                    speaker.end()
                 case .failure(let error):
-                    speaker.speak((error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo.")
+                    let message = (error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo."
+                    if started {
+                        speaker.add(message)
+                        speaker.end()
+                    } else {
+                        speaker.speak(message)
+                    }
                 }
-            }
+            })
         }
         listener.onError = { message in
             model.transcript = message
@@ -170,17 +190,18 @@ if let i = args.firstIndex(of: "--preguntar") {
     func next() {
         guard let question = questions.popFirst() else { exit(0) }
         let start = Date()
-        conversation.ask(question) { result in
-            print("\n> \(question)")
+        print("\n> \(question)")
+        conversation.ask(question, onSentence: { sentence in
+            print(String(format: "[%.2f s] ", Date().timeIntervalSince(start)) + sentence)
+        }, completion: { result in
             switch result {
             case .success(let reply):
-                print(reply.spoken)
                 if let copyable = reply.copyable { print("[copiar]\n\(copyable)") }
             case .failure(let error): print("error: \(error.localizedDescription)")
             }
-            print(String(format: "(%.2f s)", Date().timeIntervalSince(start)))
+            print(String(format: "(completa en %.2f s)", Date().timeIntervalSince(start)))
             next()
-        }
+        })
     }
     next()
     dispatchMain()
