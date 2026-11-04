@@ -3,7 +3,9 @@ import os
 
 /// Voz local con Qwen y la referencia elegida; Paulina con CAPRI_TTS=paulina o si falta la voz local.
 ///
-/// Qwen entrega un WAV; Paulina entrega bloques (`write`). Ambos pasan por el mismo
+/// Una respuesta se dice por segmentos (`begin`, `add`, `end`): la primera frase empieza a sonar mientras
+/// el modelo escribe las siguientes. Qwen genera los segmentos en orden y entrega cada uno por trozos;
+/// Paulina es casi instantánea, así que espera al texto completo. Todo pasa por el mismo
 /// `AVAudioPlayerNode` y su volumen se mide cada 20 ms para sincronizar la boca (`level()`).
 final class Speaker {
     var onStart: () -> Void = {}
@@ -30,7 +32,15 @@ final class Speaker {
     /// Identifica la frase en curso: los avisos de una frase cancelada se ignoran.
     private var utteranceID = 0
     private var pendingBuffers = 0
-    private var generationDone = false
+    /// Segmentos de la respuesta en curso que faltan por generar, en orden.
+    private var segments: [String] = []
+    /// Hay un segmento generándose (Qwen) o el texto completo sintetizándose (Paulina).
+    private var generating = false
+    /// Ya llegó todo el texto de la respuesta (`end`).
+    private var inputEnded = false
+    /// Paulina dice la respuesta entera de una vez.
+    private var paulinaText = ""
+    private var generationDone: Bool { inputEnded && segments.isEmpty && !generating }
     private(set) var isSpeaking = false
     private(set) var isPreparing = false
     var isBusy: Bool { isSpeaking || isPreparing }
@@ -40,41 +50,85 @@ final class Speaker {
     }
 
     func speak(_ text: String) {
+        begin()
+        add(text)
+        end()
+    }
+
+    /// Empieza una respuesta nueva (calla la anterior); el texto llega con `add` y termina con `end`.
+    func begin() {
         stop()
         utteranceID += 1
-        let id = utteranceID
         envelope = []
         carry = []
         pendingBuffers = 0
-        generationDone = false
+        segments = []
+        generating = false
+        inputEnded = false
+        paulinaText = ""
         isPreparing = true
         onPreparing()
+    }
+
+    /// Añade un segmento (una o varias frases) a la respuesta en curso.
+    func add(_ text: String) {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !inputEnded else { return }
+        if usePaulina {
+            paulinaText += (paulinaText.isEmpty ? "" : " ") + text
+        } else {
+            segments.append(text)
+            generateNext()
+        }
+    }
+
+    /// Ya no llega más texto: la respuesta termina cuando suene todo lo generado.
+    func end() {
+        guard !inputEnded else { return }
+        inputEnded = true
+        if usePaulina, !paulinaText.isEmpty {
+            synthesizeWithPaulina(paulinaText)
+        } else {
+            finishIfDone(id: utteranceID)
+        }
+    }
+
+    private func generateNext() {
+        guard !generating, !segments.isEmpty else { return }
+        let text = segments.removeFirst()
+        let id = utteranceID
+        generating = true
 
         // El saludo del demo usa una toma concreta para mantener el registro elegido,
         // sin volver a variar la interpretación ni alterar las otras respuestas.
-        if !usePaulina, text == DemoReply.greeting,
+        if text == DemoReply.greeting,
            let url = Bundle.module.url(forResource: "capri-qwen-greeting", withExtension: "wav") {
             DispatchQueue.main.async { [weak self] in self?.playFile(url, id: id) }
             return
         }
 
-        if !usePaulina {
-            qwen.generate(text) { [weak self] result in
-                guard let self else { return }
-                guard id == self.utteranceID else {
-                    if case .success(let url) = result { try? FileManager.default.removeItem(at: url) }
-                    return
-                }
-                switch result {
-                case .success(let url):
-                    defer { try? FileManager.default.removeItem(at: url) }
-                    self.playFile(url, id: id)
-                case .failure(let error): self.failed(error)
-                }
+        qwen.generate(text, onChunk: { [weak self] buffer in
+            self?.receive(buffer, id: id)
+        }, completion: { [weak self] result in
+            guard let self, id == self.utteranceID else { return }
+            switch result {
+            case .success: self.segmentGenerated(id: id)
+            case .failure(let error): self.failed(error)
             }
-            return
-        }
+        })
+    }
 
+    /// Terminó de generarse un segmento: empieza el siguiente o, si era el último, la respuesta acaba al sonar.
+    private func segmentGenerated(id: Int) {
+        guard id == utteranceID else { return }
+        generating = false
+        generateNext()
+        finishIfDone(id: id)
+    }
+
+    private func synthesizeWithPaulina(_ text: String) {
+        let id = utteranceID
+        generating = true
         let utterance = AVSpeechUtterance(string: text)
         let voice = Self.bestVoice()
         utterance.voice = voice
@@ -84,7 +138,11 @@ final class Speaker {
             guard let pcm = buffer as? AVAudioPCMBuffer else { return }
             // Copia: el sintetizador puede reutilizar el bloque al volver de este callback.
             let copy = pcm.frameLength > 0 ? pcm.copy() as? AVAudioPCMBuffer : nil
-            DispatchQueue.main.async { self?.receive(copy, id: id) }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                // Bloque vacío: el sintetizador terminó de generar.
+                if let copy { self.receive(copy, id: id) } else { self.segmentGenerated(id: id) }
+            }
         }
     }
 
@@ -103,7 +161,7 @@ final class Speaker {
             try file.read(into: buffer)
             log.notice("reproduciendo la voz Qwen elegida")
             receive(buffer, id: id)
-            receive(nil, id: id)
+            segmentGenerated(id: id)
         } catch { failed(error) }
     }
 
@@ -116,6 +174,8 @@ final class Speaker {
         let wasSpeaking = isBusy
         isSpeaking = false
         isPreparing = false
+        segments = []
+        generating = false
         envelope = []
         carry = []
         if wasSpeaking { onFinish() }
@@ -161,14 +221,8 @@ final class Speaker {
         return envelope[index]
     }
 
-    private func receive(_ buffer: AVAudioPCMBuffer?, id: Int) {
+    private func receive(_ buffer: AVAudioPCMBuffer, id: Int) {
         guard id == utteranceID else { return }
-        guard let buffer else {
-            // Bloque vacío: el sintetizador terminó de generar.
-            generationDone = true
-            finishIfDone(id: id)
-            return
-        }
         if connectedFormat != buffer.format {
             engine.disconnectNodeOutput(player)
             engine.connect(player, to: engine.mainMixerNode, format: buffer.format)
@@ -191,6 +245,7 @@ final class Speaker {
                 player.play()
                 isSpeaking = true
                 isPreparing = false
+                log.notice("empieza a sonar")
                 onStart()
             } catch {
                 log.error("no se pudo reproducir la voz: \(error.localizedDescription, privacy: .public)")
