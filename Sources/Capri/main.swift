@@ -66,6 +66,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notch.setExpanded(true)
         }
         model.speechLevel = { speaker.level() }
+        // Antes de callarla: al detener la voz llega onFinish, que abriría la franja de la respuesta anterior.
+        let clearStrip = {
+            model.copyable = nil
+            model.showsStrip = false
+        }
         listener.onPartial = { model.transcript = $0 }
         listener.onLevel = { model.audioLevel = $0 }
         listener.onFinal = { text in
@@ -76,8 +81,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.mode = .thinking
             conversation.ask(text) { result in
                 switch result {
-                case .success(let reply): speaker.speak(reply.spoken)
-                case .failure(let error): speaker.speak((error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo.")
+                case .success(let reply):
+                    model.copyable = reply.copyable
+                    speaker.speak(reply.spoken)
+                case .failure(let error):
+                    speaker.speak((error as? BrainError)?.spoken ?? "No pude pensar una respuesta. Inténtalo de nuevo.")
                 }
             }
         }
@@ -87,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let begin = {
             guard model.permissions.allGranted else { return model.permissions.requestMissing() }
+            clearStrip()
             speaker.stop()  // si estaba hablando, se calla para escucharte
             conversation.cancel()
             speaker.prepare()
@@ -113,6 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Logger(subsystem: "com.rosvjames.capri", category: "atajo").notice("Esc: se cancela \(String(describing: model.mode), privacy: .public)")
             listener.cancel()
             conversation.cancel()
+            clearStrip()
             speaker.stop()
             model.mode = .idle
         }
@@ -144,7 +154,9 @@ if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
     let expanded = !args.contains("colapsado")
     let elapsed = args.first { $0.hasPrefix("t=") }.flatMap { Double($0.dropFirst(2)) } ?? 0
     MainActor.assumeIsolated { writeSnapshot(to: args[i + 1], mode: mode, expanded: expanded, elapsedMs: elapsed, withoutPermissions: args.contains("sinpermisos"),
-                                       music: args.contains("musica")) }
+                                       music: args.contains("musica"),
+                                       strip: args.contains("franja2") ? "brew install node\nnode -v\nnpm -v"
+                                           : args.contains("franja") ? "docker run --name web -p 8080:80 nginx" : nil) }
     exit(0)
 }
 if let i = args.firstIndex(of: "--icon"), args.count > i + 1 {
