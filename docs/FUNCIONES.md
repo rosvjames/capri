@@ -25,14 +25,24 @@ Estado: acordado el 2026-11-03. Las fichas se completan cuando el diseño de cad
 
 ## Fichas
 
-### Música (C-29, C-09) — existe; se rediseña primero
+### Música (C-29, C-09) — vista nueva hecha en la Fase 5
 - **Necesidad:** ver y controlar lo que suena sin cambiar de app. "Pausa", "siguiente", "¿qué suena?", "pon tal canción".
-- **Entrada:** avisos de Spotify (canción, artista, álbum, estado, ID); carátula por AppleScript y descarga, en caché. Viables para un reproductor más completo: posición y duración (calculadas sin consultar en bucle), volumen de Spotify, aleatorio y repetir. Guardar en favoritos o elegir listas requiere la API web de Spotify con inicio de sesión.
+- **Entrada:** avisos de Spotify (canción, artista, álbum, estado, ID, posición y duración); carátula, repetición y posición al abrir por AppleScript; Me gusta, cola y listas por la API web con la sesión de Spotify (PKCE, guardada en el Llavero).
 - **Estados:** sin Spotify, en pausa, sonando, cambio de canción. Si Capri escucha o habla, tiene prioridad.
-- **Controles hoy:** anterior, pausa/reproducir, siguiente.
-- **Errores:** sin permiso de Automatización (no hay carátula ni controles, el resto funciona), Spotify cerrado, carátula no disponible.
+- **Controles hoy:** Me gusta, anterior, pausa/reproducir, siguiente, repetir y saltar con la barra de progreso. Por voz, además de los de la Fase 4: "dale me gusta", "añade X a la cola", "pon mi lista X".
+- **Vista:** 440 × 188 pt centrada en la cámara, con Capri recostada en capas (cuerpo detrás de la interfaz, dedos delante del borde) y gestos por eventos: mirada al abrir, parpadeo cada 4–8 s, tamborileo cada 6–12 s solo mientras suena.
+- **Errores:** sin permiso de Automatización (no hay carátula ni controles, el resto funciona), Spotify cerrado, carátula no disponible, sin sesión de Spotify (Me gusta, cola y listas piden conectarla).
 - **Permisos:** Automatización sobre Spotify, opcional, pedido la primera vez que hace falta.
 - **Terminado:** los controles responden, lo que se ve coincide con Spotify y con el notch cerrado el consumo sigue en 0 %.
+
+### Spotify en una burbuja (C-37) — prototipo funcional, Fase 5
+- **Necesidad:** elegir qué escuchar (tus listas, tus Me gusta, lo reciente, la cola, una búsqueda) sin cambiar de app ni de escritorio.
+- **Entrada:** API web de Spotify con tu sesión; la búsqueda, con la clave de cliente. Desde febrero de 2026 la API no da recomendaciones, Daily Mix, categorías ni las canciones de listas ajenas, y la búsqueda devuelve 10 resultados por tipo como mucho.
+- **Interfaz:** botón bajo el panel de música; burbuja aparte de 380 × 460 pt que sí recibe el teclado sin quitarle el foco a la app de delante. Se cierra con Esc, la X, el botón o un clic fuera. Aspecto provisional: el diseño está encargado.
+- **Acciones:** tocar reproduce (dentro de la lista abierta, si hay) por la API web, sin traer Spotify al frente; tus listas se abren para ver sus canciones; un botón por fila añade a la cola.
+- **Estados:** sin sesión (botón para conectar), cargando (se muestra lo último guardado mientras se actualiza), sin resultados, error, Spotify cerrado.
+- **Recursos:** al abrir el panel de música carga por detrás su pestaña (como mucho una vez por minuto); carátulas reducidas a 80 px y guardadas en disco. Cerrada no ocupa memoria.
+- **Terminado:** abre al instante, cada acción suena sin cambiar de app y con el uso normal Capri sigue en ~40 MB.
 
 ### Acciones locales (C-06 a C-09, C-36) — Fase 4
 - **Necesidad:** hacer cosas del Mac por voz sin buscarlas. "¿Qué hora es?", "abre Safari", "abre YouTube", "sube el volumen", "pausa".

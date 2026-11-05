@@ -35,13 +35,17 @@ Si dices "este error" o "lo que copié", el texto del portapapeles acompaña a l
 ![Franja para copiar](docs/capturas/franja.png)
 
 ### Música en el notch
-Con Spotify sonando, el notch cerrado muestra la carátula a un lado de la cámara y unas barras al otro. Al abrir el panel, la canción, el artista y los controles (anterior, pausa, siguiente) ocupan el sitio de la interfaz de Capri, sin mover su dibujo. La app se entera de cada cambio por los avisos que publica Spotify, sin consultarlo en bucle. Para la carátula y los controles pide permiso de Automatización sobre Spotify la primera vez que hace falta. Sin ese permiso, todo lo demás funciona igual.
+Con Spotify sonando, el notch cerrado muestra la carátula a un lado de la cámara y unas barras al otro. Al abrir el panel aparece la vista de música: Capri recostada sobre el reproductor, con el codo en el borde y los dedos colgando por delante, y debajo la carátula, la canción, Me gusta, anterior, pausa, siguiente, repetir y el progreso (pulsar la barra salta a ese punto). Capri está dibujada en capas, detrás y delante de la interfaz: parpadea, mira de reojo al abrir el panel y tamborilea con los dedos mientras suena algo. Cada gesto cambia un dibujo cuando toca, sin animar cuadro a cuadro. Los iconos de arriba cambian entre la música y el asistente.
+
+La app se entera de cada cambio por los avisos que publica Spotify, sin consultarlo en bucle. Para la carátula y los controles pide permiso de Automatización sobre Spotify la primera vez que hace falta; sin ese permiso, todo lo demás funciona igual.
+
+Bajo el panel cuelga un botón que abre una **burbuja de Spotify**: tus listas, tus Me gusta, lo último que sonó, la cola y una búsqueda, sin cambiar de app. Lo que eliges suena en Spotify sin traer su ventana al frente. Por voz también funcionan "dale me gusta", "añade X a la cola" y "pon mi lista X".
 
 | Notch cerrado | Panel abierto |
 |---|---|
 | ![Notch cerrado con música](docs/capturas/musica-cerrado.png) | ![Panel abierto con música](docs/capturas/musica-panel.png) |
 
-<sub>Estas dos capturas las genera la propia app (`--snapshot … musica`) con una canción y una carátula de prueba.</sub>
+<sub>Estas dos capturas las genera la propia app (`--snapshot … musica`) con una canción y una carátula de prueba. `pose=mirada|parpadeo|indice|medio` captura cada gesto de Capri.</sub>
 
 ### Rendimiento
 Medido con la compilación release y `top`:
@@ -50,8 +54,9 @@ Medido con la compilación release y `top`:
 |---|---|
 | Notch cerrado, en reposo | 0 % |
 | Notch cerrado con música (las barras las anima el servidor de ventanas) | 0 % |
-| Panel abierto con Capri animada | ~3 % |
-| Escuchando o respondiendo, con el notch cerrado | ~7 % |
+| Panel abierto con Capri animada (asistente) | ~3 % |
+| Panel abierto en música, con sus gestos | ~0,5 % |
+| Escuchando o respondiendo, con el notch cerrado | ~0,5 % |
 
 La app ocupa unos 70 MB de memoria. La voz local corre en un proceso aparte: se carga la primera vez que le hablas, en lo que tardas en decir la frase, y ocupa ~4 GB mientras la app sigue abierta.
 
@@ -67,7 +72,8 @@ Capri se diseñó por pasos, cada uno aprobado antes de seguir: primero el perso
 | Diseño base, paleta medida sobre la serie | Nueve caras, una por estado | Se reconoce a 32 px, el alto del notch |
 
 ## Qué viene
-- Acciones locales: abrir apps y sitios, la hora y pedirle música a Spotify
+- El resto del panel con la nueva estructura (asistente, avisos y resultados) y el diseño de la burbuja de Spotify
+- Temporizadores y recordatorios, y avisos de Claude Code y Codex
 - Voz definitiva y, más adelante, Capri fuera del notch
 
 Detalle en [docs/CAPACIDADES.md](docs/CAPACIDADES.md).
@@ -94,9 +100,9 @@ security add-generic-password -s com.rosvjames.capri -a anthropic -w
 
 Sin clave, Capri usa un modelo local con [Ollama](https://ollama.com) (`gemma4:12b`), que funciona sin internet pero ocupa ~10 GB de RAM. El modelo se cambia con `defaults write com.rosvjames.capri modelo <id>`: los que empiezan por `claude-` van por la API y el resto, por Ollama. También acepta el AI Gateway de Astropods (`tools/clave-astropods.sh`).
 
-Para que "pon tal canción" ponga a sonar el primer resultado (y no solo abra la búsqueda en Spotify), Capri usa la API web de Spotify para buscar. Hace falta una cuenta Premium, porque Spotify la exige al dueño de las apps de desarrollador:
+Para que "pon tal canción" ponga a sonar el primer resultado (y no solo abra la búsqueda en Spotify), y para Me gusta, la burbuja y la cola, Capri usa la API web de Spotify. Hace falta una cuenta Premium, porque Spotify la exige al dueño de las apps de desarrollador:
 
-1. En [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), crea una app. Cualquier nombre y descripción sirven; en *Redirect URIs* pon `http://127.0.0.1:8888/callback` (Capri no la usa, pero el formulario la pide) y marca **Web API**.
+1. En [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), crea una app. Cualquier nombre y descripción sirven; en *Redirect URIs* pon exactamente `http://127.0.0.1/callback` (sin puerto: Capri elige uno libre al iniciar sesión) y marca **Web API**.
 2. En los ajustes de la app, copia el *Client ID* y el *Client secret*, y guárdalos en el Llavero desde la carpeta del proyecto, con la app ya empaquetada (cada comando pide el valor sin mostrarlo; `-T` deja que Capri los lea sin preguntar cada vez que se recompila):
 
 ```bash
@@ -107,7 +113,9 @@ security add-generic-password -U -s com.rosvjames.capri -a spotify-id -T /usr/bi
 security add-generic-password -U -s com.rosvjames.capri -a spotify-secret -T /usr/bin/security -T "$PWD/build/Capri.app" -w
 ```
 
-No hace falta iniciar sesión en Capri: solo busca, y la canción la reproduce la app de Spotify. Sin estas claves, o si la API falla, Capri abre la búsqueda en Spotify.
+Con eso ya busca: la canción la reproduce la app de Spotify. Sin estas claves, o si la API falla, Capri abre la búsqueda en Spotify.
+
+3. Para Me gusta, la burbuja, la cola y "pon mi lista X", Capri necesita además **tu sesión de Spotify**. La primera vez que pulses el corazón o abras la burbuja se abre el navegador con la página de Spotify: acepta y listo. Usa el flujo con PKCE para apps de escritorio (sin el Client secret); Capri nunca ve tu contraseña y guarda la sesión en el Llavero (cuenta `spotify-sesion`). Con la sesión, las canciones se ponen por la API web, así Spotify no se trae al frente.
 
 Variables y opciones útiles:
 
