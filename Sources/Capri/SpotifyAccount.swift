@@ -11,7 +11,7 @@ import os
 /// desarrollador). Capri guarda en el Llavero el token para renovar la sesión (cuenta `spotify-sesion`) y nunca
 /// ve tu contraseña.
 final class SpotifyAccount {
-    enum Failure: Error { case noClientID, cancelled, failed }
+    enum Failure: Error { case noClientID, cancelled, failed, http(Int) }
 
     static let sessionAccount = "spotify-sesion"
     /// Biblioteca (Me gusta), listas, lo último que sonó, la cola y añadir a ella.
@@ -47,6 +47,37 @@ final class SpotifyAccount {
     /// Añade a la cola de lo que suena (necesita Premium).
     func enqueue(_ uri: String) async throws {
         _ = try await send("POST", "/me/player/queue", ["uri": uri])
+    }
+
+    /// Reproduce con la API web: cambia la canción sin traer la ventana de Spotify al frente (AppleScript
+    /// `play track` sí la trae). Una canción, dentro de `context` si se indica (lista o álbum), o un álbum, una
+    /// lista o un artista enteros. Devuelve false sin sesión, sin Premium o sin Spotify abierto en ningún
+    /// dispositivo, para usar AppleScript en su lugar.
+    func startPlayback(_ uri: String, in context: String?) async -> Bool {
+        guard isReady else { return false }
+        let body: [String: Any] = if uri.hasPrefix("spotify:track:") {
+            context.map { ["context_uri": $0, "offset": ["uri": uri]] } ?? ["uris": [uri]]
+        } else {
+            ["context_uri": uri]
+        }
+        do {
+            _ = try await send("PUT", "/me/player/play", [:], body: body)
+            return true
+        } catch Failure.http(404) {
+            // Ningún dispositivo activo (Spotify abierto pero parado un rato): se elige este Mac.
+            guard let device = try? await computerDevice() else { return false }
+            return (try? await send("PUT", "/me/player/play", ["device_id": device], body: body)) != nil
+        } catch {
+            return false
+        }
+    }
+
+    /// El Spotify de este Mac entre los dispositivos de la cuenta (o el activo, o el primero).
+    private func computerDevice() async throws -> String? {
+        let devices = try await get("/me/player/devices")["devices"] as? [[String: Any]] ?? []
+        let pick = devices.first { $0["is_active"] as? Bool == true }
+            ?? devices.first { $0["type"] as? String == "Computer" } ?? devices.first
+        return pick?["id"] as? String
     }
 
     // MARK: Me gusta
@@ -90,18 +121,22 @@ final class SpotifyAccount {
         try await send(method, path, ["uris": uri])
     }
 
-    private func send(_ method: String, _ path: String, _ query: [String: String]) async throws -> Data {
+    private func send(_ method: String, _ path: String, _ query: [String: String], body: [String: Any]? = nil) async throws -> Data {
         var components = URLComponents(string: "https://api.spotify.com/v1" + path)!
         components.queryItems = query.isEmpty ? nil : query.map { URLQueryItem(name: $0.key, value: $0.value) }
         var request = URLRequest(url: components.url!, timeoutInterval: 8)
         request.httpMethod = method
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
         request.setValue("Bearer \(try await accessToken())", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             log.error("API de Spotify \(status): \(String(decoding: data.prefix(300), as: UTF8.self), privacy: .public)")
             if status == 401 { token = nil }
-            throw Failure.failed
+            throw Failure.http(status)
         }
         return data
     }

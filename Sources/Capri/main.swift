@@ -33,6 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if notch.model.nowPlaying?.trackID == id { notch.model.liked = saved }
             }
         }
+        // Poner canciones sin traer Spotify al frente (voz y burbuja), si hay sesión de Spotify.
+        music.spotify.webPlayer = { [spotifyAccount] uri, context in await spotifyAccount.startPlayback(uri, in: context) }
+        // Las carátulas de la burbuja se guardan en disco: al volver a abrirla llegan al instante sin ocupar RAM.
+        URLCache.shared = URLCache(memoryCapacity: 2 << 20, diskCapacity: 60 << 20)
         let bubble = SpotifyBubbleController(account: spotifyAccount, remote: music.spotify)
         self.bubble = bubble
         bubble.onVisibilityChange = { notch.bubbleChanged($0) }
@@ -53,7 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notch.model.musicCommand = { [music] in music.spotify.send($0) }
         music.onClock = { notch.model.clock = $0 }
         music.onRepeat = { notch.model.repeating = $0 }
-        notch.model.refreshPlayback = { [music] in music.refreshPlayback() }
+        notch.model.refreshPlayback = { [music, weak self] in
+            music.refreshPlayback()
+            // Al abrir el panel con música, la burbuja carga por detrás para abrirse al instante.
+            self?.bubble?.prefetch()
+        }
         notch.model.seek = { [music] seconds in
             music.spotify.seek(to: seconds)
             // Se muestra el salto en seguida; la lectura siguiente lo confirma.

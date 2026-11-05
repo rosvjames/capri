@@ -25,6 +25,9 @@ final class SpotifyRemote {
     /// Los scripts y el aviso del permiso bloquean: van en orden en su propia cola, nunca en el hilo principal.
     private let queue = DispatchQueue(label: "com.rosvjames.capri.spotify")
     private var asking = false
+    /// Reproduce con la API web, sin traer Spotify al frente; lo conecta AppDelegate con la sesión de Spotify.
+    /// Devuelve false si no pudo, y entonces se usa AppleScript.
+    var webPlayer: ((String, String?) async -> Bool)?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "musica")
 
     static var isRunning: Bool {
@@ -135,7 +138,14 @@ final class SpotifyRemote {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { attempt(left - 1) }
             }
         }
-        if Self.isRunning { return attempt(1) }
+        if Self.isRunning {
+            guard let webPlayer else { return attempt(1) }
+            Task { @MainActor in
+                guard await webPlayer(uri, context) else { return attempt(1) }
+                self.waitUntilPlaying(done)
+            }
+            return
+        }
         guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MusicWatcher.spotifyID) else { return done(nil) }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
@@ -187,6 +197,22 @@ final class SpotifyRemote {
             end if
             return ""
             """, ask: true) { text in done(text == "true" ? true : text == "false" ? false : nil) }
+    }
+
+    /// Espera hasta 1,5 s a que Spotify esté sonando (tras una orden por la API web) y devuelve su estado.
+    private func waitUntilPlaying(_ done: @escaping (String?) -> Void) {
+        run("""
+            if application id "\(MusicWatcher.spotifyID)" is running then
+                tell application id "\(MusicWatcher.spotifyID)"
+                    repeat 15 times
+                        if (player state as string) is "playing" then exit repeat
+                        delay 0.1
+                    end repeat
+                    return player state as string
+                end tell
+            end if
+            return ""
+            """, ask: true) { done($0?.isEmpty == false ? $0 : nil) }
     }
 
     /// Comprueba el permiso (preguntando solo si `ask` y aún no se respondió) y ejecuta el script.

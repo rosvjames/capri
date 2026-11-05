@@ -87,6 +87,7 @@ final class SpotifyBubbleModel: ObservableObject {
     private let web = SpotifyWeb()
     /// Lo último cargado de cada pestaña, para mostrarlo al instante mientras se actualiza.
     private var cache: [BubbleTab: [Section]] = [:]
+    private var cachedAt: [BubbleTab: Date] = [:]
     /// Carátulas reducidas, compartidas por todas las filas mientras la burbuja existe.
     let thumbnails = ThumbnailStore()
     private var myID: String?
@@ -98,10 +99,10 @@ final class SpotifyBubbleModel: ObservableObject {
         self.remote = remote
     }
 
-    /// Al cerrar la burbuja se suelta lo cargado: cerrada no ocupa memoria.
+    /// Al cerrar la burbuja se sueltan las carátulas, que es lo que ocupa memoria. Las listas cargadas (texto,
+    /// unos KB) se quedan para que al volver a abrirla se vean al instante.
     func clear() {
         loadTask?.cancel()
-        cache = [:]
         sections = []
         hovered = nil
         openPlaylist = nil
@@ -122,6 +123,19 @@ final class SpotifyBubbleModel: ObservableObject {
             } catch {
                 state = .failed("No se pudo conectar con Spotify.")
             }
+        }
+    }
+
+    /// Carga la pestaña con la que se abre la burbuja, sin mostrar nada, si lo guardado tiene más de 1 minuto.
+    /// Así también se renueva el token de la sesión antes de abrirla.
+    func prefetch() {
+        let tab = tab
+        guard account.isReady, tab != .search, Date().timeIntervalSince(cachedAt[tab] ?? .distantPast) > 60 else { return }
+        cachedAt[tab] = Date()
+        Task {
+            guard let result = try? await load(tab, query: "") else { return }
+            cache[tab] = result
+            cachedAt[tab] = Date()
         }
     }
 
@@ -162,7 +176,10 @@ final class SpotifyBubbleModel: ObservableObject {
                 guard !Task.isCancelled else { return }
                 sections = result
                 state = .ready
-                if playlist == nil, tab != .search { cache[tab] = result }
+                if playlist == nil, tab != .search {
+                    cache[tab] = result
+                    cachedAt[tab] = Date()
+                }
                 log.notice("\(tab.rawValue, privacy: .public): \(result.reduce(0) { $0 + $1.items.count }) elementos en \(String(format: "%.2f", Date().timeIntervalSince(start)), privacy: .public) s")
             } catch {
                 guard !Task.isCancelled else { return }
@@ -467,6 +484,8 @@ final class SpotifyBubbleController {
     }
 
     var isVisible: Bool { panel?.isVisible == true }
+
+    func prefetch() { model.prefetch() }
 
     /// `top` es el borde inferior de lo que tiene encima (en coordenadas de pantalla); `centerX`, el de la cámara.
     func toggle(centerX: CGFloat, top: CGFloat) {
