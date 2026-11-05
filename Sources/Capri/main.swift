@@ -240,6 +240,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 let args = CommandLine.arguments
 if let i = args.firstIndex(of: "--snapshot"), args.count > i + 1 {
+    switch args.first(where: { $0.hasPrefix("pose=") })?.dropFirst(5) {
+    case "mirada": MusicCapriSnapshot.back = .gaze
+    case "parpadeo": MusicCapriSnapshot.back = .blink
+    case "indice": MusicCapriSnapshot.front = .index
+    case "medio": MusicCapriSnapshot.front = .middle
+    default: break
+    }
     let modes = AssistantMode.allCases
     let mode = args.count > i + 2 ? (modes.first { "\($0)" == args[i + 2] } ?? .idle) : .idle
     let expanded = !args.contains("colapsado")

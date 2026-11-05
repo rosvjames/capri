@@ -106,31 +106,13 @@ struct SectionTabsView: View {
     }
 }
 
-/// Arte de Capri para la vista de música. Si no está en los recursos, el hueco queda vacío.
-enum MusicArt {
-    static let back = load("capri-musica-fondo")
-    static let front = load("capri-musica-frente")
-    /// Dibujo provisional local (no está en el repositorio), hasta que llegue el arte en capas.
-    static let provisional = back == nil ? load("capri-musica-provisional") : nil
-
-    private static func load(_ name: String) -> NSImage? {
-        Bundle.module.url(forResource: name, withExtension: "png").flatMap(NSImage.init(contentsOf:))
-    }
-}
-
 struct MusicPanelView: View {
     @ObservedObject var model: AssistantModel
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            art(MusicArt.back)
-            if let provisional = MusicArt.provisional {
-                // Proporción distinta al lienzo final: apoyado en la línea y alineado a la derecha.
-                Image(nsImage: provisional).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
-                    .frame(width: MusicLayout.width, height: MusicLayout.artCanvas.height, alignment: .bottomTrailing)
-                    .offset(y: MusicLayout.separatorY - MusicLayout.artCanvas.height)
-                    .allowsHitTesting(false)
-            }
+            // Capri detrás de la interfaz (cuerpo, melena, cara).
+            MusicCapriLayer(front: false, playing: model.nowPlaying?.isPlaying == true)
 
             // Banda del reproductor: tapa lo que el cuerpo tenga por debajo de la línea.
             Rectangle()
@@ -149,24 +131,11 @@ struct MusicPanelView: View {
                 empty
             }
 
-            art(MusicArt.front)
+            // Los dedos que cuelgan por delante del borde.
+            MusicCapriLayer(front: true)
             SectionTabsView(model: model)
         }
         .frame(width: MusicLayout.width, height: MusicLayout.height, alignment: .topLeading)
-    }
-
-    /// Capa de arte sobre el lienzo común (440 × 132 pt, sin desplazamiento).
-    @ViewBuilder
-    private func art(_ image: NSImage?) -> some View {
-        if let image {
-            let r = MusicLayout.artCanvas
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: r.width, height: r.height)
-                .offset(x: r.minX, y: r.minY)
-                .allowsHitTesting(false)
-        }
     }
 
     private func player(_ song: NowPlaying) -> some View {
