@@ -85,52 +85,6 @@ struct CapriFaceView: View {
     }
 }
 
-/// Cara animada según el estado del asistente: parpadeo, miradas, pulso al escuchar y boca al hablar.
-struct LiveCapriFace: View {
-    let mode: AssistantMode
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 1.0 / 24.0)) { ctx in
-            CapriFaceView(face: Self.face(for: mode, at: ctx.date.timeIntervalSinceReferenceDate))
-        }
-    }
-
-    static func face(for mode: AssistantMode, at t: TimeInterval) -> FaceState {
-        var f: FaceState
-        switch mode {
-        case .idle:
-            f = CapriExpression.calm.face
-            f.look = glance(at: t)
-        case .listening:
-            f = CapriExpression.listening.face
-            // Pulso de los ojos; en la Fase 2 seguirá el nivel del micrófono.
-            f.eyeScale = 1.08 + 0.06 * CGFloat(abs(sin(t * 5)))
-        case .thinking:
-            f = CapriExpression.thinking.face
-        case .speaking:
-            // Boca a saltos, como en la serie: unas 10 poses por segundo. En la Fase 2 seguirá su voz.
-            let mouths: [MouthShape] = [.zigzag, .talkHalf, .talkOpen, .talkHalf]
-            f = FaceState(mouth: mouths[noise(Int(t * 10)) % mouths.count])
-        }
-        f.lid = blink(at: t)
-        return f
-    }
-
-    /// Parpadeo breve cada ~3,5 s, saltándose algunos ciclos para que no sea mecánico.
-    private static func blink(at t: TimeInterval) -> CGFloat {
-        let period = 3.5
-        let cycle = Int(t / period)
-        let phase = t - Double(cycle) * period
-        return noise(cycle) % 4 != 0 && phase < 0.12 ? 0 : 1
-    }
-
-    /// Miradas ocasionales, sin transición: pose a pose, como en la serie.
-    private static func glance(at t: TimeInterval) -> CGSize {
-        let looks = [CGSize.zero, .zero, CGSize(width: 0.7, height: 0), CGSize(width: -0.7, height: 0.1), CGSize(width: 0.3, height: -0.6)]
-        return looks[noise(Int(t / 2.4) &* 31) % looks.count]
-    }
-}
-
 /// Dibuja ojos y boca en coordenadas de la vista (`k` = escala de la imagen original a la vista).
 private struct FaceRenderer {
     let a: FaceAnchors

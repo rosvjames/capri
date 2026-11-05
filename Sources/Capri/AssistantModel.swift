@@ -120,7 +120,8 @@ final class AssistantModel: ObservableObject {
         return CopyStrip.height(for: copyable, geometry: geometry)
     }
     /// Nivel del micrófono mientras escucha (0…1).
-    @Published var audioLevel: CGFloat = 0
+    /// No es un valor publicado: 20 cambios por segundo redibujarían el panel entero (ver `NotchLiveViews`).
+    let audioLevel = LevelFeed()
     /// Empezar o terminar de escuchar desde el botón Hablar; lo conecta AppDelegate.
     var toggleTalk: () -> Void = {}
     /// Volumen (dB) de la voz de Capri que se está oyendo; lo conecta AppDelegate.

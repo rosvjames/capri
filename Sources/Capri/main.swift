@@ -136,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.showsStrip = false
         }
         listener.onPartial = { model.transcript = $0 }
-        listener.onLevel = { model.audioLevel = $0 }
+        listener.onLevel = { model.audioLevel.send($0) }
         listener.onFinal = { text in
             model.transcript = text
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {

@@ -79,7 +79,7 @@ struct NotchView: View {
                         .frame(width: m.height + 4, height: m.height + 4)
                         .padding(.leading, top + 4)
                     Spacer()
-                    WaveformView(mode: model.mode, bars: 4, level: model.mode == .listening ? model.audioLevel : nil)
+                    LiveWaveform(mode: model.mode, feed: model.audioLevel)
                         .frame(width: 22, height: 12)
                         .padding(.trailing, top + 12)
                 }
