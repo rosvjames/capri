@@ -139,16 +139,17 @@ extension EnvironmentValues {
 /// Carátula pequeña con esquinas redondeadas; mientras llega, un hueco tenue del mismo tamaño.
 struct ArtworkThumb: View {
     let image: NSImage?
+    var radius: CGFloat = 5
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 5)
+        RoundedRectangle(cornerRadius: radius)
             .fill(Color.white.opacity(0.08))
             .overlay {
                 if let image {
                     Image(nsImage: image).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .clipShape(RoundedRectangle(cornerRadius: radius))
     }
 }
 

@@ -105,7 +105,7 @@ final class AssistantModel: ObservableObject {
                        topRadius: geometry.topRadius, bottomRadius: geometry.bottomRadius)
         case .music:
             PanelFrame(width: MusicLayout.width, height: MusicLayout.height, offsetX: 0,
-                       topRadius: geometry.topRadius, bottomRadius: geometry.bottomRadius)
+                       topRadius: MusicLayout.topRadius, bottomRadius: MusicLayout.bottomRadius)
         }
     }
     /// Lo que hay que leer o copiar de la última respuesta (comando, código, enlace), o nil si solo era para oírse.
