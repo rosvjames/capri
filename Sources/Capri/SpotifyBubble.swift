@@ -83,6 +83,12 @@ final class SpotifyBubbleModel: ObservableObject {
 
     private let account: SpotifyAccount
     private let remote: SpotifyRemote
+    /// La búsqueda va con la clave de cliente (como "pon tal canción"): no necesita permisos de la sesión.
+    private let web = SpotifyWeb()
+    /// Lo último cargado de cada pestaña, para mostrarlo al instante mientras se actualiza.
+    private var cache: [BubbleTab: [Section]] = [:]
+    /// Carátulas reducidas, compartidas por todas las filas mientras la burbuja existe.
+    let thumbnails = ThumbnailStore()
     private var myID: String?
     private var loadTask: Task<Void, Never>?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "burbuja")
@@ -90,6 +96,16 @@ final class SpotifyBubbleModel: ObservableObject {
     init(account: SpotifyAccount, remote: SpotifyRemote) {
         self.account = account
         self.remote = remote
+    }
+
+    /// Al cerrar la burbuja se suelta lo cargado: cerrada no ocupa memoria.
+    func clear() {
+        loadTask?.cancel()
+        cache = [:]
+        sections = []
+        hovered = nil
+        openPlaylist = nil
+        thumbnails.removeAll()
     }
 
     func appeared() {
@@ -129,7 +145,13 @@ final class SpotifyBubbleModel: ObservableObject {
             state = .ready
             return
         }
-        state = .loading
+        // Lo que ya se cargó antes se ve al instante; se actualiza por detrás.
+        if playlist == nil, tab != .search, let cached = cache[tab] {
+            sections = cached
+            state = .ready
+        } else {
+            state = .loading
+        }
         loadTask = Task {
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             guard !Task.isCancelled else { return }
@@ -140,6 +162,7 @@ final class SpotifyBubbleModel: ObservableObject {
                 guard !Task.isCancelled else { return }
                 sections = result
                 state = .ready
+                if playlist == nil, tab != .search { cache[tab] = result }
                 log.notice("\(tab.rawValue, privacy: .public): \(result.reduce(0) { $0 + $1.items.count }) elementos en \(String(format: "%.2f", Date().timeIntervalSince(start)), privacy: .public) s")
             } catch {
                 guard !Task.isCancelled else { return }
@@ -153,8 +176,7 @@ final class SpotifyBubbleModel: ObservableObject {
         switch tab {
         case .search:
             // Desde febrero de 2026 la búsqueda da como mucho 10 resultados por tipo.
-            let json = try await account.get("/search", ["q": query, "type": "track,album,playlist,artist",
-                                                         "limit": "6", "market": "from_token"])
+            let json = try await web.searchJSON(query, types: "track,artist,album,playlist", limit: 6)
             let list = { (key: String) in
                 ((json[key] as? [String: Any])?["items"] as? [Any] ?? []).compactMap { SpotifyItem(json: $0 as? [String: Any]) }
             }
@@ -366,7 +388,7 @@ struct SpotifyBubbleView: View {
                             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 2)
                     }
                     ForEach(section.items) { item in
-                        BubbleRow(item: item, hover: model.hovered == item.id, activate: { model.activate(item) },
+                        BubbleRow(item: item, thumbnail: model.thumbnails.loader(for: item.image), hover: model.hovered == item.id, activate: { model.activate(item) },
                                   enqueue: { model.enqueue(item) },
                                   onHover: { inside in
                                       if inside { model.hovered = item.id } else if model.hovered == item.id { model.hovered = nil }
@@ -381,6 +403,7 @@ struct SpotifyBubbleView: View {
 
 private struct BubbleRow: View {
     let item: SpotifyItem
+    @ObservedObject var thumbnail: Thumbnail
     let hover: Bool
     let activate: () -> Void
     let enqueue: () -> Void
@@ -388,12 +411,14 @@ private struct BubbleRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            AsyncImage(url: item.image) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
+            ZStack {
                 Color.white.opacity(0.08)
+                if let image = thumbnail.image {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                }
             }
             .frame(width: 40, height: 40)
+            .onAppear { thumbnail.load() }
             .clipShape(item.kind == .artist ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 4)))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title).font(.system(size: 13, weight: .medium)).foregroundStyle(.white).lineLimit(1)
@@ -470,6 +495,7 @@ final class SpotifyBubbleController {
         outsideMonitor.map(NSEvent.removeMonitor)
         outsideMonitor = nil
         panel.orderOut(nil)
+        model.clear()
         onVisibilityChange(false)
     }
 
@@ -478,7 +504,9 @@ final class SpotifyBubbleController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.level = .mainMenu + 2
+        // Por encima de la ventana del notch: es transparente pero más alta que el panel y, debajo de ella,
+        // la parte de arriba de la burbuja no recibía algunos clics.
+        panel.level = .mainMenu + 4
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
@@ -486,4 +514,47 @@ final class SpotifyBubbleController {
         panel.contentView = hosting
         return panel
     }
+}
+
+/// Carátula de una fila: se descarga una vez y se reduce a 80 px (40 pt en Retina) antes de guardarla.
+/// Las de 300 px de la API, decodificadas a tamaño completo, sumaban decenas de MB con unas cuantas listas.
+@MainActor
+final class Thumbnail: ObservableObject {
+    @Published private(set) var image: NSImage?
+    private let url: URL?
+    private var started = false
+
+    init(url: URL?) { self.url = url }
+
+    func load() {
+        guard !started, let url else { return }
+        started = true
+        Task {
+            guard let (data, _) = try? await URLSession.shared.data(from: url),
+                  let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                      kCGImageSourceCreateThumbnailFromImageAlways: true,
+                      kCGImageSourceThumbnailMaxPixelSize: 80,
+                      kCGImageSourceCreateThumbnailWithTransform: true,
+                  ] as CFDictionary)
+            else { return }
+            image = NSImage(cgImage: cg, size: NSSize(width: 40, height: 40))
+        }
+    }
+}
+
+@MainActor
+final class ThumbnailStore {
+    private var loaders: [URL: Thumbnail] = [:]
+    private let none = Thumbnail(url: nil)
+
+    func loader(for url: URL?) -> Thumbnail {
+        guard let url else { return none }
+        if let loader = loaders[url] { return loader }
+        let loader = Thumbnail(url: url)
+        loaders[url] = loader
+        return loader
+    }
+
+    func removeAll() { loaders = [:] }
 }

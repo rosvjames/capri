@@ -49,6 +49,23 @@ final class SpotifyWeb {
         }
     }
 
+    /// Búsqueda sin sesión de usuario, para la burbuja: devuelve el JSON de la API tal cual.
+    func searchJSON(_ query: String, types: String, limit: Int) async throws -> [String: Any] {
+        let token = try await accessToken()
+        var components = URLComponents(string: "https://api.spotify.com/v1/search")!
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "type", value: types),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "market", value: Locale.current.region?.identifier ?? "US"),
+        ]
+        var request = URLRequest(url: components.url!, timeoutInterval: 8)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try check(response, data)
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
     private func find(_ query: String, kind: MusicKind) async throws -> Result {
         let token = try await accessToken()
         var components = URLComponents(string: "https://api.spotify.com/v1/search")!
