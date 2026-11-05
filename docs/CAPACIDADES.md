@@ -25,6 +25,7 @@ Cada capacidad tiene un ID (`C-xx`) que se usa en el roadmap, en issues y en los
 | C-32 | Ayuda con el texto seleccionado | Seleccionar un error y decir "¿qué significa esto?", "tradúcelo", "resúmelo" | Accesibilidad (selección de la app de delante), con copia temporal como alternativa; resultado copiable |
 | C-36 | Volumen del Mac | "Sube el volumen", "silencio" | Local, sin LLM en las órdenes comunes |
 | C-29 | Música en el notch | Notch cerrado: carátula a un lado y barras al otro mientras suena algo. Panel: carátula, canción, artista y controles en el sitio de la interfaz de Capri, sin cambiar el tamaño del panel | Avisos de Spotify al cambiar de canción (sin consultar en bucle: 0 % de CPU en reposo) + AppleScript para los controles |
+| C-37 | Spotify en una burbuja | Un botón bajo el panel de música abre una burbuja con tus listas, Tus me gusta, lo último que sonó, la cola y una búsqueda, sin cambiar de app | API web de Spotify con la sesión del usuario (PKCE); lo elegido suena en la app de Spotify por AppleScript |
 
 ### Principio de diseño
 Lo que se puede resolver localmente (hora, abrir apps, música) **no pasa por el LLM para ejecutarse**: el LLM solo decide *qué* herramienta usar (tool calling). Así es rápido, barato y predecible.

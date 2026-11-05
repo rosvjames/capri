@@ -37,6 +37,12 @@ struct NotchView: View {
                 .shadow(color: Theme.red.opacity(!model.expanded && active ? 0.35 : 0), radius: 14, y: 4)
                 .frame(width: w, height: h)
                 .offset(x: dx)
+            // Bajo el panel de música, el botón de la burbuja de Spotify.
+            if model.expanded, model.section == .music {
+                BubbleToggle(model: model)
+                    .offset(y: h + BubbleToggle.gap)
+                    .transition(.opacity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.45, dampingFraction: 0.78), value: model.expanded)

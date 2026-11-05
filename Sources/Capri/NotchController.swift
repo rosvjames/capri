@@ -93,7 +93,9 @@ final class NotchController {
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.collapseWork = nil
-            if !self.holdOpen, !self.hoverRect(expanded: true).contains(NSEvent.mouseLocation) { self.setExpanded(false) }
+            if !self.holdOpen, !self.model.bubbleOpen, !self.hoverRect(expanded: true).contains(NSEvent.mouseLocation) {
+                self.setExpanded(false)
+            }
         }
         collapseWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
@@ -127,10 +129,28 @@ final class NotchController {
         }
     }
 
+    /// Dónde va la burbuja de Spotify: centrada en la cámara, bajo el botón del panel de música.
+    var bubbleAnchor: (centerX: CGFloat, top: CGFloat) {
+        let below = model.panelFrame.height + BubbleToggle.gap + BubbleToggle.size.height + 6
+        return (screen.frame.midX + model.metrics.centerOffset, screen.frame.maxY - below)
+    }
+
+    /// La burbuja se abrió o se cerró. Abierta, el panel no se cierra; al cerrarla, se cierra si el ratón no está.
+    func bubbleChanged(_ open: Bool) {
+        model.bubbleOpen = open
+        if open {
+            collapseWork?.cancel()
+        } else if model.expanded, !fixedState, !hoverRect(expanded: true).contains(NSEvent.mouseLocation) {
+            scheduleCollapse(after: 0.25)
+        }
+    }
+
     private func hoverRect(expanded: Bool) -> NSRect {
         let m = model.metrics, f = model.panelFrame
         let w = expanded ? f.width + 24 : m.width + 2 * Layout.collapsedSide
-        let h = expanded ? f.height + 10 : m.height + 2
+        // Con música cuelga debajo el botón de la burbuja.
+        let button = model.section == .music ? BubbleToggle.gap + BubbleToggle.size.height : 0
+        let h = expanded ? f.height + button + 10 : m.height + 2
         let centerX = screen.frame.midX + m.centerOffset + (expanded ? f.offsetX : 0)
         return NSRect(x: centerX - w / 2, y: screen.frame.maxY - h, width: w, height: h + 6)
     }
@@ -141,7 +161,7 @@ final class NotchController {
             if hoverRect(expanded: true).contains(p) {
                 collapseWork?.cancel()
                 stripUntilHover = false
-            } else if !holdOpen, !stripUntilHover, collapseWork == nil || collapseWork?.isCancelled == true {
+            } else if !holdOpen, !model.bubbleOpen, !stripUntilHover, collapseWork == nil || collapseWork?.isCancelled == true {
                 scheduleCollapse(after: 0.25)
             }
         } else if panel.isVisible, hoverRect(expanded: false).contains(p) {

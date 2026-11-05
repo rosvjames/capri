@@ -3,24 +3,51 @@ import CryptoKit
 import Network
 import os
 
-/// Tu sesión de Spotify, solo para "Me gusta": leer si la canción está en Tus me gusta, y guardarla o quitarla.
+/// Tu sesión de Spotify: Me gusta (leer, guardar y quitar) y la burbuja de Spotify (listas, búsqueda, cola).
 ///
 /// Usa el flujo de autorización con PKCE, pensado para apps de escritorio: no hace falta el Client secret. La
 /// primera vez, el navegador abre la página de Spotify para aceptar; Spotify vuelve a un servidor que Capri abre
 /// un momento en el propio Mac (`http://127.0.0.1:<puerto>/callback`, registrado sin puerto en la app de
 /// desarrollador). Capri guarda en el Llavero el token para renovar la sesión (cuenta `spotify-sesion`) y nunca
-/// ve tu contraseña. Permisos que pide: leer y modificar tu biblioteca.
+/// ve tu contraseña.
 final class SpotifyAccount {
     enum Failure: Error { case noClientID, cancelled, failed }
 
     static let sessionAccount = "spotify-sesion"
-    private static let scopes = "user-library-read user-library-modify"
+    /// Biblioteca (Me gusta), listas, lo último que sonó, la cola y añadir a ella.
+    private static let scopes = ["user-library-read", "user-library-modify", "playlist-read-private",
+                                 "playlist-read-collaborative", "user-read-recently-played",
+                                 "user-read-playback-state", "user-modify-playback-state"]
+    /// Permisos concedidos en la sesión guardada (no son secretos). Si faltan, se vuelve a iniciar sesión.
+    private static let grantedKey = "spotify-permisos"
     private var token: String?
     private var tokenExpires = Date.distantPast
     private var login: LoginServer?
     private let log = Logger(subsystem: "com.rosvjames.capri", category: "musica")
 
     var hasSession: Bool { APIKeys.exists(account: Self.sessionAccount, variable: "SPOTIFY_REFRESH_TOKEN") }
+
+    /// La sesión existe y tiene todos los permisos que usa Capri (las primeras solo pedían Me gusta).
+    var isReady: Bool {
+        let granted = Set((UserDefaults.standard.string(forKey: Self.grantedKey) ?? "").split(separator: " ").map(String.init))
+        return hasSession && Set(Self.scopes).isSubset(of: granted)
+    }
+
+    /// Inicia sesión (o la amplía) si hace falta.
+    func ensureSession() async throws {
+        if !isReady { try await signIn() }
+    }
+
+    /// Petición a la API web con la sesión: devuelve el JSON. Sin sesión lista, falla (no abre el navegador).
+    func get(_ path: String, _ query: [String: String] = [:]) async throws -> [String: Any] {
+        let data = try await send("GET", path, query)
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
+    /// Añade a la cola de lo que suena (necesita Premium).
+    func enqueue(_ uri: String) async throws {
+        _ = try await send("POST", "/me/player/queue", ["uri": uri])
+    }
 
     // MARK: Me gusta
 
@@ -37,7 +64,7 @@ final class SpotifyAccount {
     func setSaved(_ uri: String, _ saved: Bool, _ done: @escaping (Bool?) -> Void) {
         guard Self.isTrack(uri) else { return done(nil) }
         perform(done) { [self] in
-            if !hasSession { try await signIn() }
+            try await ensureSession()
             _ = try await call(saved ? "PUT" : "DELETE", "/me/library", uri: uri)
             log.notice("me gusta: \(saved ? "guardada" : "quitada", privacy: .public) \(uri, privacy: .public)")
             return saved
@@ -60,8 +87,12 @@ final class SpotifyAccount {
     }
 
     private func call(_ method: String, _ path: String, uri: String) async throws -> Data {
+        try await send(method, path, ["uris": uri])
+    }
+
+    private func send(_ method: String, _ path: String, _ query: [String: String]) async throws -> Data {
         var components = URLComponents(string: "https://api.spotify.com/v1" + path)!
-        components.queryItems = [URLQueryItem(name: "uris", value: uri)]
+        components.queryItems = query.isEmpty ? nil : query.map { URLQueryItem(name: $0.key, value: $0.value) }
         var request = URLRequest(url: components.url!, timeoutInterval: 8)
         request.httpMethod = method
         request.setValue("Bearer \(try await accessToken())", forHTTPHeaderField: "Authorization")
@@ -101,20 +132,35 @@ final class SpotifyAccount {
         guard status == 200, let access = json["access_token"] as? String else {
             log.error("token de Spotify \(status): \(json["error"] as? String ?? "", privacy: .public)")
             // La sesión se revocó (en la cuenta de Spotify) o caducó: hay que volver a iniciarla.
-            if json["error"] as? String == "invalid_grant" { APIKeys.delete(account: Self.sessionAccount) }
+            if json["error"] as? String == "invalid_grant" {
+                APIKeys.delete(account: Self.sessionAccount)
+                UserDefaults.standard.removeObject(forKey: Self.grantedKey)
+            }
             throw Failure.failed
         }
         token = access
         tokenExpires = Date().addingTimeInterval((json["expires_in"] as? Double ?? 3600) - 60)
         // Spotify puede cambiar el token de la sesión al renovarla: se guarda el nuevo.
         if let refresh = json["refresh_token"] as? String { APIKeys.save(refresh, account: Self.sessionAccount) }
+        if let scope = json["scope"] as? String { UserDefaults.standard.set(scope, forKey: Self.grantedKey) }
         return json
     }
 
     // MARK: Inicio de sesión
 
-    /// Abre la página de Spotify en el navegador y espera la respuesta (hasta 3 minutos).
+    /// Abre la página de Spotify en el navegador y espera la respuesta (hasta 3 minutos). Si ya hay un inicio
+    /// de sesión en marcha, espera a ese.
     private func signIn() async throws {
+        if let pending = signingIn { return try await pending.value }
+        let task = Task { try await startSignIn() }
+        signingIn = task
+        defer { signingIn = nil }
+        try await task.value
+    }
+
+    private var signingIn: Task<Void, Error>?
+
+    private func startSignIn() async throws {
         guard let clientID = APIKeys.read(account: "spotify-id", variable: "SPOTIFY_CLIENT_ID") else { throw Failure.noClientID }
         let verifier = Self.randomString(64)
         let challenge = Data(SHA256.hash(data: Data(verifier.utf8))).base64URL
@@ -131,7 +177,7 @@ final class SpotifyAccount {
             URLQueryItem(name: "redirect_uri", value: redirect),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "code_challenge", value: challenge),
-            URLQueryItem(name: "scope", value: Self.scopes),
+            URLQueryItem(name: "scope", value: Self.scopes.joined(separator: " ")),
             URLQueryItem(name: "state", value: state),
         ]
         let url = components.url!

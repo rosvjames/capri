@@ -81,6 +81,9 @@ final class AssistantModel: ObservableObject {
     /// La canción está en Tus me gusta; nil si no se sabe (sin sesión de Spotify o aún sin leer).
     @Published var liked: Bool?
     var toggleLike: () -> Void = {}
+    /// La burbuja de Spotify está abierta: el panel no se cierra mientras tanto.
+    @Published var bubbleOpen = false
+    var toggleBubble: () -> Void = {}
     /// Saltar a un punto de la canción, activar o quitar la repetición, y leer el reloj al abrir el panel.
     var seek: (TimeInterval) -> Void = { _ in }
     var toggleRepeat: () -> Void = {}

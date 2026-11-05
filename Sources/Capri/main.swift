@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let music = MusicWatcher()
     let ducker = AudioDucker()
     let spotifyAccount = SpotifyAccount()
+    var bubble: SpotifyBubbleController?
     lazy var conversation = Conversation(actions: ActionRunner(music: music))
     private var accessibilityWatch: AnyCancellable?
     private var duckingWatch: AnyCancellable?
@@ -31,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             spotifyAccount.isSaved(id) { saved in
                 if notch.model.nowPlaying?.trackID == id { notch.model.liked = saved }
             }
+        }
+        let bubble = SpotifyBubbleController(account: spotifyAccount, remote: music.spotify)
+        self.bubble = bubble
+        bubble.onVisibilityChange = { notch.bubbleChanged($0) }
+        notch.model.toggleBubble = {
+            let anchor = notch.bubbleAnchor
+            bubble.toggle(centerX: anchor.centerX, top: anchor.top)
         }
         notch.model.toggleLike = { [spotifyAccount] in
             guard let id = notch.model.nowPlaying?.trackID else { return }

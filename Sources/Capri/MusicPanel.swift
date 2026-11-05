@@ -37,6 +37,27 @@ enum MusicLayout {
     static let barHeight: CGFloat = 3
 }
 
+/// Botón que cuelga bajo el panel de música y abre la burbuja de Spotify.
+struct BubbleToggle: View {
+    @ObservedObject var model: AssistantModel
+    static let size = CGSize(width: 56, height: 18)
+    static let gap: CGFloat = 4
+
+    var body: some View {
+        Button { model.toggleBubble() } label: {
+            Image(systemName: model.bubbleOpen ? "chevron.up" : "chevron.down")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(model.bubbleOpen ? Theme.green : .white.opacity(0.8))
+                .frame(width: Self.size.width, height: Self.size.height)
+                .background(Capsule().fill(Theme.panel))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.12)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(model.bubbleOpen ? "Cerrar Spotify" : "Abrir Spotify aquí")
+    }
+}
+
 /// Iconos de las secciones del panel, arriba a la izquierda y lejos de la cámara. La activa va en verde y
 /// subrayada.
 enum SectionTabs {
