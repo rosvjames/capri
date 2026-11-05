@@ -25,6 +25,12 @@ enum MusicRequest: Equatable {
     case pause, play, next, previous, nowPlaying
     /// Canción, artista o álbum.
     case search(String, MusicKind)
+    /// Me gusta (true) o quitarlo (false) a lo que suena. Necesita la sesión de Spotify.
+    case like(Bool)
+    /// Añadir una canción a la cola, buscándola. Necesita la sesión de Spotify.
+    case enqueue(String)
+    /// Poner una de tus listas por su nombre. Necesita la sesión de Spotify.
+    case playlist(String)
 }
 
 /// Lo que Capri dice al terminar y si la acción se hizo de verdad.
@@ -91,8 +97,9 @@ enum Tools {
             "input_schema": [
                 "type": "object",
                 "properties": [
-                    "accion": ["type": "string", "enum": ["pausar", "seguir", "siguiente", "anterior", "que_suena", "poner"]],
-                    "busqueda": ["type": "string", "description": "Solo con poner: qué buscar, p. ej. Tusa Karol G"],
+                    "accion": ["type": "string", "enum": ["pausar", "seguir", "siguiente", "anterior", "que_suena", "poner",
+                                                          "me_gusta", "quitar_me_gusta", "a_la_cola", "mi_lista"]],
+                    "busqueda": ["type": "string", "description": "Con poner y a_la_cola: qué buscar, p. ej. Tusa Karol G. Con mi_lista: nombre de la lista"],
                     "tipo": ["type": "string", "enum": ["cancion", "artista", "album"], "description": "Solo con poner"],
                 ],
                 "required": ["accion"],
@@ -130,6 +137,9 @@ enum Tools {
                 case .album: "album"
                 }
                 return .local(name: "musica", input: ["accion": "poner", "busqueda": query, "tipo": tipo])
+            case .like(let value): return .local(name: "musica", input: ["accion": value ? "me_gusta" : "quitar_me_gusta"])
+            case .enqueue(let query): return .local(name: "musica", input: ["accion": "a_la_cola", "busqueda": query])
+            case .playlist(let name): return .local(name: "musica", input: ["accion": "mi_lista", "busqueda": name])
             }
         }
     }
@@ -175,6 +185,10 @@ enum Tools {
                 default: .track
                 }
                 return text("busqueda").map { .music(.search($0, kind)) }
+            case "me_gusta": return .music(.like(true))
+            case "quitar_me_gusta": return .music(.like(false))
+            case "a_la_cola": return text("busqueda").map { .music(.enqueue($0)) }
+            case "mi_lista": return text("busqueda").map { .music(.playlist($0)) }
             default: return nil
             }
         default:
@@ -193,8 +207,14 @@ final class ActionRunner {
     static let volumeStep = 10
     fileprivate let log = Logger(subsystem: "com.rosvjames.capri", category: "acciones")
 
-    init(music: MusicWatcher) {
+    /// Sesión de Spotify, para Me gusta, la cola y tus listas; nil en las pruebas sin app.
+    let account: SpotifyAccount?
+    /// Me gusta cambió por voz: el panel lo muestra (canción, nuevo valor).
+    var onLiked: (String, Bool) -> Void = { _, _ in }
+
+    init(music: MusicWatcher, account: SpotifyAccount? = nil) {
         self.music = music
+        self.account = account
     }
 
     func perform(_ action: Action, done: @escaping (ActionOutcome) -> Void) {
@@ -302,6 +322,39 @@ final class ActionRunner {
                     openSearch(query, done)
                 }
             }
+        case .like(let value):
+            guard let account, account.isReady else { return done(.failed(Self.needsSession)) }
+            guard let id = music.current?.trackID, id.hasPrefix("spotify:track:") else { return done(.failed("No suena ninguna canción.")) }
+            account.setSaved(id, value) { [self] saved in
+                guard let saved else { return done(.failed("Spotify no respondió.")) }
+                onLiked(id, saved)
+                done(.done(saved ? "Guardada en tus Me gusta." : "Quitada de tus Me gusta."))
+            }
+        case .enqueue(let query):
+            guard let account, account.isReady else { return done(.failed(Self.needsSession)) }
+            guard SpotifyRemote.isRunning else { return done(.failed("Spotify está cerrado.")) }
+            // Solo canciones: la cola de Spotify no acepta álbumes ni artistas enteros.
+            spotifyWeb.search(query, kind: .track) { result in
+                guard case .success(let found) = result else { return done(.failed("No encontré esa canción.")) }
+                Task { @MainActor in
+                    do {
+                        try await account.enqueue(found.uri)
+                        done(.done("Añadí \(found.spoken) a la cola."))
+                    } catch {
+                        done(.failed("No pude añadirla a la cola."))
+                    }
+                }
+            }
+        case .playlist(let name):
+            guard let account, account.isReady else { return done(.failed(Self.needsSession)) }
+            Task { @MainActor [self] in
+                guard let list = await Self.findPlaylist(name, account: account) else {
+                    return done(.failed("No encuentro esa lista entre las tuyas."))
+                }
+                spotify.play(list.uri) { state in
+                    done(state == "playing" ? .done("Pongo tu lista \(list.name).") : .failed("Spotify no empezó a sonar."))
+                }
+            }
         case .pause, .play, .next, .previous:
             guard SpotifyRemote.isRunning else { return done(.failed("Spotify está cerrado.")) }
             let command: MusicCommand = switch request {
@@ -329,6 +382,34 @@ final class ActionRunner {
 }
 
 extension ActionRunner {
+    static let needsSession = "Primero conecta tu cuenta de Spotify: abre la burbuja de Spotify en el panel de música."
+
+    /// La lista tuya (o que sigues) que mejor coincide con lo que dijiste: igual, luego que la contenga, luego la
+    /// que comparte más palabras. Se miran hasta 100 listas.
+    @MainActor
+    fileprivate static func findPlaylist(_ spoken: String, account: SpotifyAccount) async -> (uri: String, name: String)? {
+        var lists: [(uri: String, name: String)] = []
+        for offset in [0, 50] {
+            guard let json = try? await account.get("/me/playlists", ["limit": "50", "offset": String(offset)]) else { break }
+            let items = json["items"] as? [[String: Any]] ?? []
+            lists += items.compactMap { item in
+                guard let uri = item["uri"] as? String, let name = item["name"] as? String else { return nil }
+                return (uri, name)
+            }
+            if items.count < 50 { break }
+        }
+        let target = QuickCommands.normalize(spoken)
+        let words = Set(target.split(separator: " "))
+        let scored = lists.map { list -> (Int, (uri: String, name: String)) in
+            let name = QuickCommands.normalize(list.name)
+            if name == target { return (1000, list) }
+            if name.contains(target) || target.contains(name) { return (500 - abs(name.count - target.count), list) }
+            return (Set(name.split(separator: " ")).intersection(words).count * 10, list)
+        }
+        guard let best = scored.max(by: { $0.0 < $1.0 }), best.0 > 0 else { return nil }
+        return best.1
+    }
+
     /// Sin la API web de Spotify no se puede elegir un resultado: se abre la búsqueda en la app (o en la web si
     /// no está instalada).
     fileprivate func openSearch(_ query: String, _ done: @escaping (ActionOutcome) -> Void) {

@@ -13,7 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let ducker = AudioDucker()
     let spotifyAccount = SpotifyAccount()
     var bubble: SpotifyBubbleController?
-    lazy var conversation = Conversation(actions: ActionRunner(music: music))
+    lazy var actions = ActionRunner(music: music, account: spotifyAccount)
+    lazy var conversation = Conversation(actions: actions)
     private var accessibilityWatch: AnyCancellable?
     private var duckingWatch: AnyCancellable?
 
@@ -43,6 +44,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notch.model.toggleBubble = {
             let anchor = notch.bubbleAnchor
             bubble.toggle(centerX: anchor.centerX, top: anchor.top)
+        }
+        actions.onLiked = { id, saved in
+            if notch.model.nowPlaying?.trackID == id { notch.model.liked = saved }
         }
         notch.model.toggleLike = { [spotifyAccount] in
             guard let id = notch.model.nowPlaying?.trackID else { return }

@@ -11,6 +11,7 @@ enum QuickCommands {
         guard !text.isEmpty else { return nil }
         if let action = fixed[text] { return action }
         if let action = volumeLevel(text) { return action }
+        if let action = queueOrPlaylist(text) { return action }
         if let action = song(text) { return action }
         return open(text, apps: apps)
     }
@@ -68,7 +69,12 @@ enum QuickCommands {
                    "pon la anterior", "pon la cancion anterior", "regresa a la anterior"], .music(.previous))
         + phrases(["que suena", "que esta sonando", "que cancion es", "que cancion es esta", "como se llama esta cancion",
                    "que cancion suena", "quien canta", "quien canta esta cancion", "de quien es esta cancion",
-                   "que estoy escuchando", "que es lo que suena"], .music(.nowPlaying)),
+                   "que estoy escuchando", "que es lo que suena"], .music(.nowPlaying))
+        + phrases(["dale me gusta", "me gusta", "me gusta esta cancion", "me encanta esta cancion", "dale like", "ponle like",
+                   "like", "guardala", "guarda esta cancion", "guarda la cancion", "agregala a mis me gusta",
+                   "anadela a mis me gusta", "ponle me gusta", "dale me gusta a esta cancion"], .music(.like(true)))
+        + phrases(["quitale el me gusta", "quita el me gusta", "ya no me gusta", "quitale el like", "quita el like",
+                   "quitala de mis me gusta", "sacala de mis me gusta", "no me gusta esta cancion"], .music(.like(false))),
         uniquingKeysWith: { first, _ in first })
 
     /// "Volumen al 40", "pon el volumen en 70 %".
@@ -78,6 +84,25 @@ enum QuickCommands {
         let number = text[match].components(separatedBy: CharacterSet.decimalDigits.inverted).first { !$0.isEmpty }
         guard let level = number.flatMap({ Int($0) }), level <= 100 else { return nil }
         return .volume(.set(level))
+    }
+
+    /// "Añade X a la cola", "pon mi lista X". "Esta" no cuenta como canción: la cola es para lo que se busca.
+    private static func queueOrPlaylist(_ text: String) -> Action? {
+        let rules: [(String, (String) -> Action)] = [
+            ("^(anade|agrega|mete|pon|encola) (la cancion )?(.+) (a|en) la cola$", { .music(.enqueue($0)) }),
+            ("^(pon|ponme|reproduce|toca) (mi lista|mi playlist|la lista|la playlist|mi lista de reproduccion) (de )?(.+)$",
+             { .music(.playlist($0)) }),
+        ]
+        for (pattern, make) in rules {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let range = Range(match.range(at: pattern.hasPrefix("^(anade") ? 3 : 4), in: text) else { continue }
+            var query = String(text[range]).trimmingCharacters(in: .whitespaces)
+            for filler in ["que se llama ", "llamada ", "que dice "] where query.hasPrefix(filler) { query.removeFirst(filler.count) }
+            guard !query.isEmpty, !["esta", "esta cancion", "la", "eso"].contains(query) else { return nil }
+            return make(query)
+        }
+        return nil
     }
 
     /// Solo frases inequívocas: "pon la canción X", "pon X en Spotify", "pon música de X".
